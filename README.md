@@ -4,28 +4,40 @@ Phase 0 foundation for StitchMori. The quick counter and project features are vi
 
 ## Local setup
 
-1. Run `npm install`.
-2. Copy `.env.example` to `.env.local` and fill in the Supabase project URL and **publishable** key from the Supabase project Connect dialog. Never put a service role or secret key in `NEXT_PUBLIC_*` variables.
-3. Run `npm run dev`, then open `http://localhost:3000`.
+This project uses a **local Supabase stack** for development. No hosted Supabase project is needed. Node.js 20+ and a running Docker-compatible runtime are required; Docker Desktop is installed on this machine. The Supabase CLI is a pinned project dev dependency.
 
-Without `.env.local`, the home and preparation pages still render, while email login is unavailable. Set the public Supabase variables **before building** for deployment, because Next.js embeds them in the browser bundle. The migration is a local file only; it is not automatically applied to a remote database.
+1. Run `npm install` and start Docker Desktop (or OrbStack if installed later).
+2. Once per machine, create a network that binds published ports to localhost:
 
-## Email code setup
+   ```sh
+   docker network create -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 stitch-mori-local
+   ```
 
-In Supabase Dashboard, enable the Email provider under **Authentication → Sign In / Providers**. Under **Authentication → Email Templates → Magic Link**, replace the link content with the code variable, for example:
+3. Run `npx supabase start --network-id stitch-mori-local` from this repository. The first run downloads container images and applies the migration in `supabase/migrations/` to the **local** DB.
+4. Run `npx supabase status` to see local URLs and keys. Put the API URL (`http://127.0.0.1:54321`) and the **public** publishable/anon key in `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Never use the service-role/secret key in `NEXT_PUBLIC_*` variables. `.env.local` is ignored by Git.
+5. Run `npm run dev` and open `http://localhost:3000`.
 
-```html
-<h2>StitchMori 로그인 코드</h2>
-<p>인증 코드: {{ .Token }}</p>
+The current machine's `.env.local` is configured for the local stack. If local keys change after a reset or reinstall, refresh it from `npx supabase status`. Set the public variables before a production build because Next.js embeds them in the browser bundle.
+
+### Stop, resume, and reset
+
+```sh
+npx supabase stop                         # stop containers; keep local data
+npx supabase start --network-id stitch-mori-local  # resume
+npx supabase db reset --local --network-id stitch-mori-local  # delete local data; replay migrations
 ```
 
-The code input uses `signInWithOtp({ email })` and `verifyOtp({ email, token, type: 'email' })`. Supabase sends a link if the template contains `{{ .ConfirmationURL }}` instead of `{{ .Token }}`. Set the site URL to the app's URL under Authentication URL settings. For production email delivery, configure an appropriate SMTP sender and review Auth rate limits. See the [Supabase OTP guide](https://supabase.com/docs/guides/auth/auth-email-passwordless) and [email template guide](https://supabase.com/docs/guides/auth/auth-email-templates).
+`db reset --local` removes local users and data. Do not add `--linked`, run `supabase link`, or run `supabase db push` for this local workflow. The local stack is for development only.
+
+## Email OTP test
+
+The local template in `supabase/templates/magic_link.html` uses `{{ .Token }}` and is enabled by `supabase/config.toml`. Restart the local stack after changing the template. Supabase captures local emails in Mailpit at `http://127.0.0.1:54324`; no message is delivered to a real inbox. Open `/login`, request a code for any test email, read the six-digit code in Mailpit, and enter it on the site. The form uses `signInWithOtp({ email })` and `verifyOtp({ email, token, type: 'email' })`. See the [Supabase local email guide](https://supabase.com/docs/guides/local-development/cli/testing-and-linting) and [template guide](https://supabase.com/docs/guides/local-development/customizing-email-templates).
 
 ## Database migration
 
 `supabase/migrations/20261018000000_counter_foundation.sql` creates only `work_items`, `counters`, and `counter_events`. It adds FK, CHECK, UNIQUE, indexes, an append-only event trigger, SELECT-only grants and owner-based RLS. Anonymous visitors have no server table access. Direct insert/update/delete is revoked for authenticated clients too. Phase 1 adds an atomic, authenticated command path and the local-import receipt; until then, server counter records cannot be created through the application.
 
-The migration is **not** applied automatically. Apply it only to a dedicated local or test Supabase instance for validation before any reviewed deployment. Phase 2 adds projects, parts, 1:1 linkage and soft deletion. Phase 3 adds work sessions.
+`supabase start` and `supabase db reset --local` apply this migration only to the local DB. Phase 2 adds projects, parts, 1:1 linkage and soft deletion. Phase 3 adds work sessions.
 
 ## Commands
 
@@ -36,7 +48,7 @@ npm run build
 npm test
 ```
 
-DB constraint and RLS integration tests require an isolated Supabase/PostgreSQL test environment with at least two Auth users. The app test command covers TypeScript domain contracts only; it does not claim to validate SQL permissions.
+DB constraint and RLS tests run against the local database with `npx supabase test db --network-id stitch-mori-local`; they do not contact a hosted project. The network flag is needed because this project starts the stack on its own localhost-bound network. The app test command covers TypeScript domain contracts only.
 
 ## Data boundary
 

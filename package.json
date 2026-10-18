@@ -23,6 +23,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
+    "supabase": "2.121.0",
     "typescript": "^5.9.0",
     "vitest": "^3.0.0"
   }
