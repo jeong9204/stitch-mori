@@ -1,7 +1,13 @@
-import type { CounterCommand, CounterCommandResult, CounterState } from "@/domain/counter/types";
+import type { CounterCommand, CounterState } from "@/domain/counter/types";
 
-/** Phase 1 implements this through one atomic server command endpoint. */
+export type RemoteCounterCommandResult =
+  | { status: "applied" | "duplicate"; state: CounterState; eventId: string; revision: number; latestRevision: number }
+  | { status: "conflict"; current: CounterState; latestRevision: number }
+  | { status: "rejected"; reason: string };
+
+/** Authenticated server access. Guest quick mode never uses this interface. */
 export interface RemoteCounterStore {
+  createWorkItem(): Promise<CounterState>;
   getWorkItem(id: string): Promise<CounterState | null>;
-  applyCommand(command: CounterCommand): Promise<CounterCommandResult>;
+  applyCommand(command: CounterCommand): Promise<RemoteCounterCommandResult>;
 }

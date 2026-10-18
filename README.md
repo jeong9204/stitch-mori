@@ -1,6 +1,6 @@
 # StitchMori
 
-Phase 1A includes a guest quick counter at `/quick`. Projects and server counter sync remain in progress.
+Phase 1A includes a guest quick counter at `/quick`. Phase 1B-1 adds authenticated server counter RPCs without connecting the guest UI to the server. Projects, guest import, and device sync remain in progress.
 
 ## Guest quick counter
 
@@ -41,9 +41,11 @@ The local template in `supabase/templates/magic_link.html` uses `{{ .Token }}` a
 
 ## Database migration
 
-`supabase/migrations/20261018000000_counter_foundation.sql` creates only `work_items`, `counters`, and `counter_events`. It adds FK, CHECK, UNIQUE, indexes, an append-only event trigger, SELECT-only grants and owner-based RLS. Anonymous visitors have no server table access. Direct insert/update/delete is revoked for authenticated clients too. A later phase adds an atomic, authenticated command path and the local-import receipt; until then, server counter records cannot be created through the application.
+`supabase/migrations/20261018000000_counter_foundation.sql` creates only `work_items`, `counters`, and `counter_events`. It adds FK, CHECK, UNIQUE, indexes, an append-only event trigger, SELECT-only grants and owner-based RLS. Anonymous visitors have no server table access. Direct insert/update/delete is revoked for authenticated clients too.
 
-`supabase start` and `supabase db reset --local` apply this migration only to the local DB. Phase 2 adds projects, parts, 1:1 linkage and soft deletion. Phase 3 adds work sessions.
+`supabase/migrations/20261018000001_counter_commands.sql` adds authenticated `create_counter_work_item()` and `apply_counter_command(...)` RPCs. Both are public invoker wrappers around private definer functions with an empty search path and explicit owner checks. The command RPC accepts the command envelope and action, reads the server state under a work item row lock, checks `command_id` and `expected_revision`, and writes both counters, revision, and an append-only event in one transaction. A duplicate returns its original result and the latest revision. The client cannot submit a next-state snapshot. The original foundation migration is unchanged.
+
+For an existing local stack, run `npx supabase migration up --local --network-id stitch-mori-local`. `supabase start` and `supabase db reset --local` also apply pending migrations locally, but reset deletes local users and data. Do not run these migrations against an online project without a separate deployment review. Phase 2 adds projects, parts, 1:1 linkage and soft deletion. Phase 3 adds work sessions.
 
 ## Commands
 
@@ -56,10 +58,12 @@ npm test
 
 DB constraint and RLS tests run against the local database with `npx supabase test db --network-id stitch-mori-local`; they do not contact a hosted project. The network flag is needed because this project starts the stack on its own localhost-bound network. The app test command covers counter rules and IndexedDB persistence with an in-memory IndexedDB implementation.
 
+Run `node tests/db/concurrent-counter-commands.mjs` with the local stack running to test two independent PostgreSQL connections issuing commands simultaneously. It creates a temporary test user and work item, verifies revision contention and duplicate command IDs, then removes only its own test rows. The test briefly disables the append-only trigger inside a local cleanup transaction; application roles retain no event mutation privileges.
+
 ## Data boundary
 
 - `src/domain` contains framework-independent work item and counter contracts.
 - `src/data/local` implements the guest IndexedDB store with atomic snapshot/event writes.
 - `src/data/import` defines stable import IDs and server receipts, so a retry cannot overwrite an account record or delete the local original before acknowledgment.
-- `src/data/remote` and `src/data/sync` define future server access and sync boundaries.
+- `src/data/remote` contains an authenticated Supabase adapter for the new RPCs; `src/data/sync` remains a future sync boundary.
 - `src/app` contains web routes. A future native shell can use the same domain rules and reusable UI without matching web URLs.
