@@ -1,10 +1,11 @@
-import type { CounterCommand, CounterState } from "@/domain/counter/types";
+import type { CounterCommand, CounterCommandResult, CounterEvent, CounterState } from "@/domain/counter/types";
 
 export type LocalPersistenceStatus = "pending" | "saved" | "failed";
 export type RemoteSyncStatus = "not_applicable" | "queued" | "synced" | "conflict";
 
 export interface LocalCounterRecord {
   localWorkItemId: string;
+  deviceId: string;
   state: CounterState;
   importId: string;
   importStatus: "local" | "importing" | "imported" | "failed";
@@ -18,11 +19,9 @@ export interface PendingCounterCommand {
   remoteSync: RemoteSyncStatus;
 }
 
-/** Phase 1 implements this with IndexedDB transactions. */
+/** A single local transaction must update the snapshot and append the event. */
 export interface LocalCounterStore {
-  getWorkItem(id: string): Promise<LocalCounterRecord | null>;
-  saveWorkItem(record: LocalCounterRecord): Promise<void>;
-  enqueue(command: PendingCounterCommand): Promise<void>;
-  getPending(workItemId: string): Promise<PendingCounterCommand[]>;
-  markSynced(commandId: string): Promise<void>;
+  getOrCreateQuick(): Promise<LocalCounterRecord>;
+  getEvents(workItemId: string): Promise<CounterEvent[]>;
+  applyCommand(command: CounterCommand): Promise<CounterCommandResult>;
 }

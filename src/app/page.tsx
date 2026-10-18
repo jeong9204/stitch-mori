@@ -24,8 +24,8 @@ export default async function HomePage() {
       <section className="card-grid" aria-label="시작 메뉴">
         <article className="card">
           <h2>간편 카운터</h2>
-          <p>로그인 없이 사용할 수 있는 카운터가 다음 단계에서 제공됩니다.</p>
-          <Link className="button" href="/quick">준비 상태 보기</Link>
+          <p>로그인 없이 코수와 단수를 세고 이 브라우저에 기록할 수 있습니다.</p>
+          <Link className="button" href="/quick">간편 카운터 시작</Link>
         </article>
         <article className="card">
           <h2>프로젝트 관리</h2>
@@ -39,7 +39,7 @@ export default async function HomePage() {
         {email ? (
           <><span>{email} 계정으로 로그인됨</span><SignOutButton /></>
         ) : (
-          <span>로그인하지 않아도 간편 카운터를 이용할 수 있도록 준비 중입니다.</span>
+          <span>로그인 없이 간편 카운터를 사용할 수 있습니다.</span>
         )}
       </section>
       {!hasSupabaseEnv() && (

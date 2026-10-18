@@ -32,3 +32,48 @@ button { cursor: pointer; }
 .form-message { margin: 0; }
 .signout-group { display: inline-flex; gap: 8px; }
 @media (max-width: 640px) { .shell { padding: 0 18px 40px; } .page-stack { padding-top: 36px; } .card-grid { grid-template-columns: 1fr; } .card p { min-height: 0; } }
+.quick-page { max-width: 640px; margin: 0 auto; padding: 28px 0 64px; }
+.quick-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.quick-heading h1 { margin: 4px 0 0; font-size: clamp(2rem, 7vw, 3rem); }
+.quick-heading .eyebrow { margin: 0; }
+.quick-local-note { color: var(--muted); margin: 12px 0 20px; }
+.quick-status { padding: 10px 14px; border-radius: 10px; background: #e8f2eb; color: #205137; font-weight: 700; }
+.quick-error-box { margin-top: 12px; padding: 14px; border: 1px solid #b64c42; border-radius: 10px; background: #fff2ef; }
+.quick-error-box p { margin: 0 0 10px; }
+.quick-error-box button, .quick-meta button, .quick-edit button { min-height: 44px; border: 1px solid var(--accent); border-radius: 9px; background: white; color: var(--accent); font-weight: 700; padding: 8px 14px; }
+.quick-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 24px; }
+.quick-tabs button { min-height: 48px; border: 1px solid var(--line); border-radius: 10px; background: white; font-weight: 700; }
+.quick-tabs button[aria-selected="true"] { color: white; background: var(--accent); border-color: var(--accent); }
+.quick-counter { margin-top: 12px; padding: 24px; text-align: center; background: white; border: 1px solid var(--line); border-radius: 16px; }
+.quick-counter-label { margin: 0; color: var(--muted); font-weight: 700; }
+.quick-number { display: block; font-variant-numeric: tabular-nums; font-size: clamp(5rem, 24vw, 9rem); font-weight: 800; line-height: 1.18; overflow-wrap: anywhere; }
+.quick-target { color: var(--muted); margin: 0 0 22px; }
+.quick-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; }
+.quick-actions button { min-height: 76px; border: 1px solid var(--accent); border-radius: 14px; font-size: 2rem; font-weight: 800; }
+.quick-minus { background: white; color: var(--accent); }
+.quick-plus { background: var(--accent); color: white; }
+.quick-complete { width: 100%; min-height: 48px; margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: #f5f8f4; color: var(--ink); font-weight: 700; }
+.quick-meta, .quick-edit, .quick-history { margin-top: 18px; padding: 20px; background: white; border: 1px solid var(--line); border-radius: 14px; }
+.quick-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.quick-meta p { margin: 0; }
+.quick-edit h2, .quick-history h2 { font-size: 1.15rem; margin: 0 0 16px; }
+.quick-edit form + form { margin-top: 18px; }
+.quick-edit label { display: block; margin-bottom: 8px; font-weight: 700; }
+.quick-edit label span { color: var(--muted); font-size: .85rem; font-weight: 400; }
+.quick-edit-row { display: flex; gap: 8px; }
+.quick-edit input { min-width: 0; flex: 1; min-height: 44px; padding: 8px; border: 1px solid #aab5a9; border-radius: 8px; }
+.quick-history ol { margin: 0; padding-left: 24px; }
+.quick-history li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.quick-history li:last-child { border: 0; }
+.quick-history li span, .quick-history li small { display: block; }
+.quick-history li small { color: var(--muted); margin: 3px 0; }
+.quick-error { color: #a53228; font-weight: 700; }
+.quick-dialog { width: min(90vw, 420px); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+.quick-dialog::backdrop { background: #1119; }
+.quick-dialog h2 { margin-top: 0; }
+.quick-dialog-actions { display: grid; gap: 10px; margin-top: 20px; }
+.quick-dialog-actions button { min-height: 48px; border: 1px solid var(--accent); border-radius: 10px; background: white; color: var(--accent); font-weight: 700; }
+.quick-dialog-actions button:first-child { background: var(--accent); color: white; }
+.quick-page button:disabled { opacity: .5; cursor: not-allowed; }
+.quick-page :focus-visible { outline: 3px solid #e99c28; outline-offset: 2px; }
+@media (max-width: 400px) { .quick-counter { padding: 20px 14px; } .quick-meta, .quick-edit, .quick-history { padding: 16px; } .quick-edit-row { flex-wrap: wrap; } .quick-edit-row button { width: 100%; } }

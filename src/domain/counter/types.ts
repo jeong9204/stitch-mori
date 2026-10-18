@@ -31,6 +31,18 @@ export interface CounterCommand {
   action: CounterAction;
 }
 
+/** An immutable record of one accepted command. eventId equals commandId. */
+export interface CounterEvent {
+  eventId: string;
+  commandId: string;
+  workItemId: WorkItemId;
+  occurredAt: string;
+  deviceId: string;
+  action: CounterAction;
+  before: CounterState;
+  after: CounterState;
+}
+
 export type CounterCommandResult =
   | { status: "applied" | "duplicate"; state: CounterState; eventId: string }
   | { status: "conflict"; current: CounterState }
