@@ -1,22 +1,17 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { ProjectManager } from "@/components/project-manager";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  if (!hasSupabaseEnv()) redirect("/login");
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  if (!data?.claims) redirect("/login");
-
-  return (
-    <section className="simple-page">
-      <p className="eyebrow">프로젝트</p>
-      <h1>준비 중입니다</h1>
-      <p>프로젝트 생성과 관리 기능은 Phase 2에서 구현합니다. 지금은 프로젝트를 만들 수 없습니다.</p>
-      <Link className="text-link" href="/">홈으로 돌아가기</Link>
-    </section>
-  );
+  let userId: string | undefined;
+  if (hasSupabaseEnv()) {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getClaims();
+    userId = typeof data?.claims?.sub === "string" ? data.claims.sub : undefined;
+  }
+  if (userId) return <ProjectManager userId={userId} />;
+  return <section className="simple-page"><p className="eyebrow">프로젝트</p><h1>로그인 후 프로젝트를 시작하세요</h1><p>프로젝트는 계정에 저장됩니다. 로그인 없이 카운트하려면 간편 카운터를 사용할 수 있어요.</p><div className="project-form-actions"><Link className="button" href="/login">이메일로 로그인하기</Link><Link className="button button-secondary" href="/quick">간편 카운터</Link></div></section>;
 }

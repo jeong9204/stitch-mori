@@ -224,3 +224,47 @@ button { cursor: pointer; }
   .server-work-link strong { font-size: 1.25rem; }
   .server-discard-dialog .button { width: 100%; }
 }
+
+/* Phase 2A project management */
+.projects-page { display: grid; gap: 22px; max-width: 860px; margin: 0 auto; padding: 38px 0 60px; min-width: 0; }
+.projects-heading { display: flex; justify-content: space-between; align-items: end; gap: 18px; flex-wrap: wrap; }
+.projects-heading .eyebrow { margin: 0; }
+.projects-heading h1 { margin: 5px 0 10px; font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -.05em; }
+.projects-heading p:last-child { margin: 0; color: var(--color-text-secondary); line-height: 1.6; }
+.project-list { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.project-card, .project-form-card, .project-empty { min-width: 0; padding: clamp(20px, 4vw, 28px); border: 1px solid var(--color-line); border-radius: 23px; background: var(--color-card); box-shadow: var(--shadow-card); }
+.project-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--color-text-secondary); font-size: .81rem; }
+.project-status { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 11px; border-radius: 999px; background: var(--color-soft-rose); color: #823f55; font-weight: 800; }
+.project-status--paused { background: #f0e9e1; color: #6d5143; }
+.project-status--completed { background: var(--color-soft-sage); color: #34552f; }
+.project-card h2 { margin: 15px 0 8px; font-size: 1.35rem; overflow-wrap: anywhere; }
+.project-notes { margin: 0 0 18px; color: var(--color-text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.project-card-actions, .project-form-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.project-card-actions button, .project-status-picker select { min-height: 46px; padding: 9px 13px; border: 1px solid #d9b8bd; border-radius: 12px; background: #fff; color: var(--color-primary-contrast); font-weight: 800; }
+.project-card-actions button:disabled { opacity: .5; }
+.project-status-picker { display: inline-flex; align-items: center; gap: 7px; color: var(--color-text-secondary); font-size: .84rem; }
+.project-card-actions .project-delete { color: var(--color-error); border-color: #d7a0a5; }
+.project-form-card h2 { margin: 0 0 18px; }
+.project-form-card form { display: grid; gap: 9px; }
+.project-form-card label { font-weight: 800; }
+.project-form-card label span { color: var(--color-text-secondary); font-size: .82rem; font-weight: 400; }
+.project-form-card input, .project-form-card textarea, .project-form-card select { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid #c8b4a8; border-radius: 11px; background: #fff; color: var(--color-text); font: inherit; }
+.project-form-card textarea { resize: vertical; }
+.project-form-card label:not(:first-child) { margin-top: 10px; }
+.project-empty { text-align: center; padding: 46px 20px; }
+.project-empty > span { color: var(--color-primary-strong); font-size: 3rem; }
+.project-empty h2 { margin: 6px 0 9px; }
+.project-empty p { color: var(--color-text-secondary); line-height: 1.6; }
+.project-footer { display: flex; flex-wrap: wrap; gap: 16px; }
+.project-footer a { color: var(--color-primary-contrast); font-weight: 800; }
+.project-confirm { width: min(calc(100vw - 24px), 440px); max-height: 90dvh; margin: auto; overflow: auto; border: 1px solid var(--color-line); padding: 25px; border-radius: 23px; background: var(--color-card); box-shadow: 0 18px 60px rgba(48,31,27,.3); }
+.project-confirm::backdrop { background: rgba(41,30,26,.58); }
+.project-confirm h2 { margin: 0 0 12px; font-size: 1.35rem; }
+.project-confirm p { color: var(--color-text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+.project-delete-button { background: var(--color-error); border-color: var(--color-error); }
+@media (max-width: 420px) {
+  .projects-page { padding-top: 25px; }
+  .projects-heading > .button { width: 100%; }
+  .project-card-actions > .button { width: 100%; }
+  .project-form-actions > .button { flex: 1; }
+}

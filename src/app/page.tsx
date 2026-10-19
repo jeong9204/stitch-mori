@@ -30,11 +30,11 @@ export default async function HomePage() {
         </Link>
         <article className="home-project-card">
           <div>
-            <p className="eyebrow">다음에 만나요</p>
+            <p className="eyebrow">계정에 저장</p>
             <h2>프로젝트 관리</h2>
-            <p>프로젝트 목록과 작업 파트는 준비 중이에요. 간편 카운터는 지금 사용할 수 있습니다.</p>
+            <p>프로젝트를 만들고 기본 파트의 카운터를 계정에서 이어서 사용하세요.</p>
           </div>
-          <span className="coming-soon">Phase 2 준비 중</span>
+          <Link className="button" href="/projects">프로젝트 관리 열기</Link>
           {!email && <Link className="text-link" href="/login">이메일로 로그인하기 <span aria-hidden="true">→</span></Link>}
         </article>
       </section>
