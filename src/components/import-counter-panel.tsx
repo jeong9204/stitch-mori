@@ -133,7 +133,7 @@ export function ImportCounterPanel({ userId, email }: { userId: string; email: s
         <div className="import-stats"><div><span>현재 코수</span><strong>{record.state.stitch.current}</strong></div><div><span>완료한 단수</span><strong>{record.state.row.current}</strong></div></div>
         <dl className="import-facts"><div><dt>마지막 카운트</dt><dd>{displayTime(lastCount)}</dd></div><div><dt>변경 이력</dt><dd>{eventsCount}건</dd></div></dl>
         {snapshot && record.state.revision > snapshot.state.revision && <p className="notice">처음 가져오기 시점 이후 {record.state.revision - snapshot.state.revision}건의 로컬 변경은 이번 가져오기 스냅샷에 포함되지 않습니다.</p>}
-        {connectedToThisAccount ? <p className="import-connected">이 계정의 작업에 보관됨 · 서버 작업 ID {record.serverWorkItemId}<br />이후 간편 카운터 변경은 자동 동기화되지 않습니다.</p>
+        {connectedToThisAccount ? <p className="import-connected">이 계정의 작업에 보관됨 · 서버 작업 ID {record.serverWorkItemId}<br />이후 간편 카운터 변경은 자동 동기화되지 않습니다.<br /><Link className="text-link" href={`/account/${record.serverWorkItemId}`}>계정 카운터 이어하기 →</Link></p>
           : connectedToOtherAccount ? <p className="notice">이 로컬 기록은 다른 계정에 이미 연결되어 있습니다. 현재 계정으로 자동 복사하지 않습니다.</p>
             : <div className="import-actions"><button className="button" type="button" onClick={() => { void importNow(); }} disabled={status === "importing" || status === "loading"}>계정으로 가져오기</button><Link className="button button-secondary" href="/">지금은 건너뛰기</Link></div>}
       </section>}
@@ -141,10 +141,10 @@ export function ImportCounterPanel({ userId, email }: { userId: string; email: s
       <section className="import-card" aria-label="계정의 기존 작업">
         <p className="eyebrow">계정에 이미 있는 기록</p><h2>기존 계정 작업</h2>
         {otherItems.length === 0 ? <p>현재 계정에 별도로 저장된 작업이 없습니다.</p> : <ul className="account-items">{otherItems.map((item) => <li key={item.id}><button type="button" aria-pressed={selectedAccountId === item.id} onClick={() => setSelectedAccountId(item.id)}><strong>코수 {item.stitch} · 단수 {item.row}</strong><span>{displayTime(item.createdAt)} 저장 · 변경 {item.revision}건</span></button></li>)}</ul>}
-        {selectedAccount && <p className="import-selection">선택한 계정 기록: 코수 {selectedAccount.stitch}, 단수 {selectedAccount.row}. 현재는 읽기 전용이며 서버 카운팅 화면은 후속 단계에서 제공합니다.</p>}
+        {selectedAccount && <p className="import-selection">선택한 계정 기록: 코수 {selectedAccount.stitch}, 단수 {selectedAccount.row}. <Link className="text-link" href={`/account/${selectedAccount.id}`}>이 작업에서 이어하기 →</Link></p>}
         <p className="import-note">기존 계정 작업을 덮어쓰지 않습니다. 가져온 기록은 별도 작업으로 보관됩니다.</p>
       </section>
-      <div className="import-actions import-footer"><Link className="button button-secondary" href="/quick">로컬 간편 카운터 계속 사용</Link><Link className="text-link" href="/">홈으로 돌아가기</Link></div>
+      <div className="import-actions import-footer"><Link className="button button-secondary" href="/quick">로컬 간편 카운터 계속 사용</Link><Link className="text-link" href="/account">계정 작업 목록</Link><Link className="text-link" href="/">홈으로 돌아가기</Link></div>
     </div>
   );
 }

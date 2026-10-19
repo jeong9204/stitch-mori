@@ -63,4 +63,29 @@ describe("authenticated Supabase counter adapter", () => {
     expect(from).toHaveBeenCalledWith("work_items");
     expect(eq).toHaveBeenCalledWith("id", workItemId);
   });
+
+  it("reads ordered server events and their saved command timestamps", async () => {
+    const initial = { ...serverState, revision: 0, stitch: { current: 0, target: null } };
+    const range = vi.fn().mockResolvedValue({ data: [{ id: command.commandId, command_id: command.commandId,
+      work_item_id: workItemId, occurred_at: command.occurredAt, device_id: command.deviceId,
+      action: command.action, previous_state: initial, next_state: serverState,
+      revision_before: 0, revision_after: 1 }], error: null });
+    const order = vi.fn().mockReturnValue({ range });
+    const eq = vi.fn().mockReturnValue({ order });
+    const select = vi.fn().mockReturnValue({ eq });
+    const from = vi.fn().mockReturnValue({ select });
+    const store = new SupabaseCounterStore({ from } as unknown as SupabaseClient);
+    expect(await store.getEvents(workItemId)).toEqual([{ eventId: command.commandId, commandId: command.commandId,
+      workItemId, occurredAt: command.occurredAt, deviceId: command.deviceId, action: command.action,
+      before: initial, after: serverState }]);
+    expect(from).toHaveBeenCalledWith("counter_events");
+    expect(eq).toHaveBeenCalledWith("work_item_id", workItemId);
+    expect(order).toHaveBeenCalledWith("revision_after", { ascending: true });
+  });
+
+  it("shows a useful retry message for a returned network error", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "TypeError: Failed to fetch" } });
+    const store = new SupabaseCounterStore({ rpc } as unknown as SupabaseClient);
+    await expect(store.applyCommand(command)).rejects.toThrow("서버 연결에 실패했습니다");
+  });
 });

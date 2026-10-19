@@ -1,6 +1,6 @@
 # StitchMori
 
-Phase 1A includes a guest quick counter at `/quick`. Phase 1B-1 adds authenticated server counter RPCs, and Phase 1B-2 adds an explicit local-record import flow after login. Projects and ongoing device sync remain in progress.
+Phase 1A includes a guest quick counter at `/quick`. Phase 1B-1 adds authenticated server counter RPCs, Phase 1B-2 adds explicit local-record import, and Phase 1B-3 lets signed-in users continue account counters. Projects and ongoing device sync remain in progress.
 
 ## Guest quick counter
 
@@ -77,3 +77,11 @@ After email OTP login, `/import` shows the saved quick counter and separate acco
 IndexedDB upgrades in place to version 2 and keeps the Phase 1A work item and events. The first import attempt freezes a saved snapshot under the existing import ID. Retries use that same snapshot even if the network response was lost or local counting later continues. While importing, local counter writes are temporarily blocked. If the tab closes mid-import, `/quick` offers a way to release the local lock and keep counting; the frozen snapshot stays available for an idempotent retry, and later local edits are not silently added to it. The local original is never deleted. After server acknowledgment, the local record stores the account user ID, server work item ID, and imported revision. If local counting continues afterward, those newer changes remain only on this device and are shown as separate from the imported snapshot. Server records on `/import` are currently read-only; Phase 1B-2 does not implement ongoing server counting or cross-device synchronization.
 
 Run `npx supabase test db --network-id stitch-mori-local` to test import replay, undo mapping, duplicate requests, owner isolation, and the existing database policies. Run `node tests/db/concurrent-counter-imports.mjs` with the local stack running to test two simultaneous import requests against separate PostgreSQL connections; it cleans up only its temporary user and rows. The app tests cover IndexedDB upgrade, frozen snapshots, write blocking, response loss, retry, and account mismatch.
+
+## Phase 1B-3 account counter continuation
+
+After login, `/account` lists work items owned by the current user. Open an item at `/account/[workItemId]` to continue counting. `/quick` always remains the separate, local-only counter. The account counter reads owner-scoped `work_items`, `counters`, and `counter_events` through RLS and sends changes through the existing `apply_counter_command` RPC. No Phase 1B-3 DB migration is needed.
+
+Before sending an account command, the browser commits its stable command ID, expected revision, action, device ID, and occurrence time to a separate IndexedDB outbox (`stitchmori-server-commands-v1`). Commands are sent in order. The display may show a preview while the status clearly distinguishes pending work from server-confirmed values. On a network failure, retry uses the same command ID. After a reload, the outbox is read for that account and work item; an already-applied command is acknowledged by the RPC without another count. Pending commands remain stored if the tab closes.
+
+If another device changes the revision, the pending commands stay in the outbox. The screen shows the latest server state and the pending actions. It does not automatically apply those actions to the new revision. The user can check the latest state, or explicitly discard the pending commands after a confirmation. Logging out leaves the outbox under its original user ID and hides that account's server data. Account work items do not automatically synchronize the separate local quick counter or its post-import changes.

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isValidCounterState } from "../../domain/counter/invariants";
-import type { CounterCommand, CounterState } from "../../domain/counter/types";
+import type { CounterAction, CounterCommand, CounterEvent, CounterState } from "../../domain/counter/types";
 import type { RemoteCounterCommandResult, RemoteCounterStore } from "./types";
 
 function object(value: unknown): Record<string, unknown> {
@@ -31,12 +31,17 @@ function revision(value: unknown): number {
   return parsed;
 }
 
+function remoteError(message: string): Error {
+  return new Error(/failed to fetch|fetch failed|networkerror/i.test(message)
+    ? "서버 연결에 실패했습니다. 연결 상태를 확인하고 다시 시도해 주세요." : message);
+}
+
 export class SupabaseCounterStore implements RemoteCounterStore {
   constructor(private readonly client: SupabaseClient) {}
 
   async createWorkItem(): Promise<CounterState> {
     const { data, error } = await this.client.rpc("create_counter_work_item");
-    if (error) throw new Error(error.message);
+    if (error) throw remoteError(error.message);
     const response = object(data);
     if (response.status === "rejected") throw new Error(String(response.reason));
     if (response.status !== "created") throw new Error("작업 생성 응답이 올바르지 않습니다.");
@@ -49,7 +54,7 @@ export class SupabaseCounterStore implements RemoteCounterStore {
       .select("id, revision, counters(counter_type, current_value, target_value)")
       .eq("id", id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw remoteError(error.message);
     if (!data) return null;
     const record = object(data);
     if (!Array.isArray(record.counters)) throw new Error("서버 카운터 행이 올바르지 않습니다.");
@@ -66,6 +71,31 @@ export class SupabaseCounterStore implements RemoteCounterStore {
     });
   }
 
+  async getEvents(id: string): Promise<CounterEvent[]> {
+    const events: CounterEvent[] = [];
+    const pageSize = 500;
+    for (let start = 0; ; start += pageSize) {
+      const { data, error } = await this.client.from("counter_events")
+        .select("id,command_id,work_item_id,occurred_at,device_id,action,previous_state,next_state,revision_before,revision_after")
+        .eq("work_item_id", id).order("revision_after", { ascending: true }).range(start, start + pageSize - 1);
+      if (error) throw remoteError(error.message);
+      const rows = data ?? [];
+      for (const raw of rows) {
+        const row = object(raw);
+        const before = state(row.previous_state);
+        const after = state(row.next_state);
+        const action = object(row.action) as CounterAction;
+        if (before.workItemId !== id || after.workItemId !== id || after.revision !== before.revision + 1
+          || Number(row.revision_before) !== before.revision || Number(row.revision_after) !== after.revision
+          || typeof row.id !== "string" || typeof row.command_id !== "string" || typeof row.occurred_at !== "string"
+          || typeof row.device_id !== "string") throw new Error("서버 변경 기록이 올바르지 않습니다.");
+        events.push({ eventId: row.id, commandId: row.command_id, workItemId: id,
+          occurredAt: row.occurred_at, deviceId: row.device_id, action, before, after });
+      }
+      if (rows.length < pageSize) return events;
+    }
+  }
+
   async applyCommand(command: CounterCommand): Promise<RemoteCounterCommandResult> {
     const { data, error } = await this.client.rpc("apply_counter_command", {
       p_command_id: command.commandId,
@@ -75,7 +105,7 @@ export class SupabaseCounterStore implements RemoteCounterStore {
       p_device_id: command.deviceId,
       p_action: command.action,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw remoteError(error.message);
     const response = object(data);
     if (response.status === "rejected") return { status: "rejected", reason: String(response.reason) };
     if (response.status === "conflict") {
