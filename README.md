@@ -1,12 +1,12 @@
 # StitchMori
 
-Phase 1A includes a guest quick counter at `/quick`. Phase 1B-1 adds authenticated server counter RPCs without connecting the guest UI to the server. Projects, guest import, and device sync remain in progress.
+Phase 1A includes a guest quick counter at `/quick`. Phase 1B-1 adds authenticated server counter RPCs, and Phase 1B-2 adds an explicit local-record import flow after login. Projects and ongoing device sync remain in progress.
 
 ## Guest quick counter
 
 Open `/quick` to count stitches and rows without logging in. The browser stores one quick work item, its current counter snapshot, stable work item/import/device IDs, and an append-only event for each accepted change in IndexedDB (`stitchmori-local-v1`). A row completion changes row and stitch values in one command. Undo adds another event. Rapid taps update the screen immediately and enter an ordered, in-memory write queue; the screen shows how many writes are pending. A failed write keeps the queue in this tab and can be retried with the same command IDs. Do not close or reload a tab while it reports an unsaved change: the in-memory queue cannot survive a failed IndexedDB write.
 
-Guest data stays in this browser and is never sent to Supabase by the quick counter. Clearing site data or using a private browsing session can remove it. Importing guest records into an account and syncing multiple devices are later phases.
+Guest data stays in this browser and is never sent to Supabase by the quick counter. The separate `/import` flow sends a frozen saved snapshot only after the signed-in user chooses to import it. Clearing site data or using a private browsing session can remove the local original. Ongoing synchronization across devices is a later phase.
 
 ## Local setup
 
@@ -67,3 +67,13 @@ Run `node tests/db/concurrent-counter-commands.mjs` with the local stack running
 - `src/data/import` defines stable import IDs and server receipts, so a retry cannot overwrite an account record or delete the local original before acknowledgment.
 - `src/data/remote` contains an authenticated Supabase adapter for the new RPCs; `src/data/sync` remains a future sync boundary.
 - `src/app` contains web routes. A future native shell can use the same domain rules and reusable UI without matching web URLs.
+
+## Phase 1B-2 local record import
+
+After email OTP login, `/import` shows the saved quick counter and separate account work items. Signing in does not upload local data. The user must choose **계정으로 가져오기**. The import page does not create an empty local counter just by opening it.
+
+`supabase/migrations/20261019000000_counter_imports.sql` adds an owner-scoped import receipt and `import_counter_snapshot(jsonb)`. Apply it only to the local stack with `npx supabase migration up --local --network-id stitch-mori-local`; do not apply it to an online project without a separate review. The RPC creates a separate account work item, replays every action through the existing server command validator, checks each before/after snapshot and revision, and commits the events, counters, and receipt together. It remaps event IDs and undo links to server IDs; the original payload and IDs remain in the receipt. The existing account work items are not overwritten. A repeat request for the same user and import ID with the same payload returns the original server work item; a changed payload is rejected.
+
+IndexedDB upgrades in place to version 2 and keeps the Phase 1A work item and events. The first import attempt freezes a saved snapshot under the existing import ID. Retries use that same snapshot even if the network response was lost or local counting later continues. While importing, local counter writes are temporarily blocked. If the tab closes mid-import, `/quick` offers a way to release the local lock and keep counting; the frozen snapshot stays available for an idempotent retry, and later local edits are not silently added to it. The local original is never deleted. After server acknowledgment, the local record stores the account user ID, server work item ID, and imported revision. If local counting continues afterward, those newer changes remain only on this device and are shown as separate from the imported snapshot. Server records on `/import` are currently read-only; Phase 1B-2 does not implement ongoing server counting or cross-device synchronization.
+
+Run `npx supabase test db --network-id stitch-mori-local` to test import replay, undo mapping, duplicate requests, owner isolation, and the existing database policies. Run `node tests/db/concurrent-counter-imports.mjs` with the local stack running to test two simultaneous import requests against separate PostgreSQL connections; it cleans up only its temporary user and rows. The app tests cover IndexedDB upgrade, frozen snapshots, write blocking, response loss, retry, and account mismatch.

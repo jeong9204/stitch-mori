@@ -40,7 +40,7 @@ export default async function HomePage() {
       </section>
       <section className="account-panel" aria-label="계정 상태">
         {email ? (
-          <><span>{email} 계정으로 로그인됨</span><SignOutButton /></>
+          <><span>{email} 계정으로 로그인됨</span><Link className="text-link" href="/import">로컬 기록과 계정 확인</Link><SignOutButton /></>
         ) : (
           <span>간편 기록은 현재 기기의 브라우저에 저장됩니다.</span>
         )}

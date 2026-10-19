@@ -10,6 +10,8 @@ export interface LocalCounterRecord {
   importId: string;
   importStatus: "local" | "importing" | "imported" | "failed";
   serverWorkItemId: string | null;
+  importedByUserId?: string | null;
+  importedRevision?: number | null;
   updatedAt: string;
 }
 

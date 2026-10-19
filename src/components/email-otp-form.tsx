@@ -40,7 +40,7 @@ export function EmailOtpForm() {
       setMessage(`인증에 실패했습니다: ${error.message}`);
       return;
     }
-    router.push("/");
+    router.push("/import");
     router.refresh();
   }
 

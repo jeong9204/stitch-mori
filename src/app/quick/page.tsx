@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
-import { IndexedDbCounterStore } from "@/data/local/indexeddb-counter-store";
-import { QuickCounterSession } from "@/data/local/quick-counter-session";
+import { quickCounterSession, quickCounterStore } from "@/data/local/quick-session";
 import { lastUndoableEvent } from "@/domain/counter/engine";
 import type { CounterAction, CounterEvent, CounterType } from "@/domain/counter/types";
 import { isNonNegativeInteger } from "@/domain/counter/invariants";
 import { changeText, lastCounterChange } from "./display";
 
-const store = new IndexedDbCounterStore();
 const name = { stitch: "코수", row: "단수" } as const;
 
 function dateTime(value: string): string {
@@ -69,15 +67,32 @@ function EditForms({
 }
 
 export default function QuickPage() {
-  const [session] = useState(() => new QuickCounterSession(store));
+  const session = quickCounterSession;
   const { record, events, status, error, pendingCount } = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getServerSnapshot);
   const [selected, setSelected] = useState<CounterType>("stitch");
   const [rowPrompt, setRowPrompt] = useState(false);
+  const [importLocked, setImportLocked] = useState(false);
+  const [releaseError, setReleaseError] = useState("");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const rowButtonRef = useRef<HTMLButtonElement>(null);
   const resetButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => { queueMicrotask(() => { void session.load(); }); }, [session]);
+  useEffect(() => {
+    const channel = new BroadcastChannel("stitchmori-import-v1");
+    channel.onmessage = (message: MessageEvent<{ type?: string; nonce?: string }>) => {
+      if (message.data.type === "status-request") {
+        const view = session.getSnapshot();
+        channel.postMessage({ type: "status-response", nonce: message.data.nonce, status: view.status, pendingCount: view.pendingCount });
+      }
+      if (message.data.type === "import-start") setImportLocked(true);
+      if (message.data.type === "import-end") {
+        setImportLocked(false);
+        void session.load();
+      }
+    };
+    return () => channel.close();
+  }, [session]);
   useEffect(() => {
     const dialog = dialogRef.current;
     if (rowPrompt && dialog && !dialog.open) {
@@ -89,7 +104,7 @@ export default function QuickPage() {
 
   const undoTarget = lastUndoableEvent(events);
   const lastChange = lastCounterChange(events, selected);
-  const canEdit = Boolean(record && (status === "saved" || status === "pending"));
+  const canEdit = Boolean(record && !importLocked && record.importStatus !== "importing" && (status === "saved" || status === "pending"));
   const value = record?.state[selected];
 
   return (
@@ -102,6 +117,11 @@ export default function QuickPage() {
         <span className="quick-status-dot" aria-hidden="true" />
         {status === "loading" ? "로컬 기록 불러오는 중" : status === "pending" ? `저장 중 · 대기 ${pendingCount}건` : status === "saved" ? "이 기기에 저장됨" : "저장 실패 · 기록 유실 위험"}
       </div>
+      {(importLocked || record?.importStatus === "importing") && <p className="notice" role="status">계정으로 가져오는 동안 카운터 조작을 잠시 멈췄어요. 가져오기 화면에서 결과를 확인해 주세요.</p>}
+      {record?.importStatus === "importing" && !importLocked && <div className="quick-import-recovery"><Link className="text-link" href="/import">가져오기 결과 확인</Link><button type="button" onClick={() => {
+        void quickCounterStore.releaseImport(record.localWorkItemId).then(() => session.load()).catch((cause: unknown) => setReleaseError(cause instanceof Error ? cause.message : "로컬 기록 잠금을 해제하지 못했습니다."));
+      }}>가져오기 중단 후 로컬 기록 계속</button><p>이미 서버에 보관된 스냅샷이 있을 수 있습니다. 이후 입력은 자동 동기화되지 않습니다.</p></div>}
+      {releaseError && <p className="quick-error" role="alert">{releaseError}</p>}
       {error && <div className="quick-error-box" role="alert"><strong>로컬 기록을 저장하지 못했어요.</strong><p>{error}</p>{status === "failed" && <p>저장 대기: {pendingCount}건</p>}<button type="button" onClick={() => { void session.retry(); }} disabled={status === "pending"}>다시 시도</button></div>}
       {record && <>
         <div className="quick-tabs" role="tablist" aria-label="카운터 선택">
@@ -134,7 +154,7 @@ export default function QuickPage() {
             )}
           </div>
         </section>
-        <div className="quick-utility"><span>기록은 이 브라우저에만 보관됩니다.</span><button type="button" disabled={!canEdit || !undoTarget} onClick={() => undoTarget && session.enqueue({ type: "undo", eventId: undoTarget.eventId })}>직전 변경 실행 취소</button></div>
+        <div className="quick-utility"><span>{record.importStatus === "imported" ? "가져온 이후의 입력은 이 기기에만 저장돼요." : "기록은 이 브라우저에만 보관됩니다."}</span><button type="button" disabled={!canEdit || !undoTarget} onClick={() => undoTarget && session.enqueue({ type: "undo", eventId: undoTarget.eventId })}>직전 변경 실행 취소</button></div>
         <section className="quick-history" aria-label="최근 변경 기록">
           <h2>최근 변경 기록</h2>
           {events.length === 0 ? <p className="quick-empty">아직 변경 기록이 없습니다.</p> : <ol reversed>{events.slice(-10).reverse().map((event) => <li key={event.eventId}><div className="quick-history-head"><strong>{eventLabel(event)}</strong><time dateTime={event.occurredAt}>{dateTime(event.occurredAt)}</time></div><span>코수 {event.before.stitch.current} → {event.after.stitch.current} · 단수 {event.before.row.current} → {event.after.row.current}</span>{event.action.type === "setTarget" && <span>목표 {name[event.action.counter]} {event.before[event.action.counter].target ?? "없음"} → {event.after[event.action.counter].target ?? "없음"}</span>}</li>)}</ol>}
