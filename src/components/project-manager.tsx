@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { IndexedDbServerCommandQueue } from "@/data/remote/server-command-queue";
+import { assertNoPendingCounterCommands } from "@/data/projects/pending-deletion-guard";
 import { ProjectStore, projectStatusLabels, validateProjectInput, type Project, type ProjectInput, type ProjectStatus } from "@/data/projects/project-store";
 
 const blank: ProjectInput = { name: "", notes: "", status: "active" };
@@ -15,6 +17,7 @@ export function ProjectManager({ userId }: { userId: string }) {
   const router = useRouter();
   const [client] = useState(createClient);
   const [store] = useState(() => new ProjectStore(client));
+  const [commandQueue] = useState(() => new IndexedDbServerCommandQueue());
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -91,17 +94,21 @@ export function ProjectManager({ userId }: { userId: string }) {
     if (!deleteTarget) return;
     setBusy(true); setError("");
     try {
+      const { data: parts, error: partsError } = await client.from("project_parts")
+        .select("work_item_id").eq("project_id", deleteTarget.id).is("deleted_at", null);
+      if (partsError) throw new Error(partsError.message);
+      await assertNoPendingCounterCommands(commandQueue, userId, (parts ?? []).map((part) => part.work_item_id));
       await store.delete(deleteTarget);
       setProjects((existing) => existing.filter((item) => item.id !== deleteTarget.id));
       closeDelete();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "프로젝트를 삭제하지 못했습니다."); }
+    } catch (cause) { setDeleteTarget(null); setError(cause instanceof Error ? cause.message : "프로젝트를 삭제하지 못했습니다."); }
     finally { setBusy(false); }
   }
 
   if (!authorized) return <p role="status">계정 상태를 확인하고 있습니다.</p>;
   return <div className="projects-page">
     <header className="projects-heading">
-      <div><p className="eyebrow">나의 뜨개 작업실</p><h1>프로젝트</h1><p>작업을 정리하고, 기본 파트의 카운터를 이어서 사용하세요.</p></div>
+      <div><p className="eyebrow">나의 뜨개 작업실</p><h1>프로젝트</h1><p>작업을 정리하고 파트별 카운터를 이어서 사용하세요.</p></div>
       {mode === "list" && <button className="button" type="button" onClick={startCreate}>새 프로젝트 만들기</button>}
     </header>
     {error && <div className="quick-error-box" role="alert"><p>{error}</p>{mode === "list" && <button type="button" onClick={() => void refresh()}>목록 다시 불러오기</button>}</div>}
@@ -119,7 +126,7 @@ export function ProjectManager({ userId }: { userId: string }) {
     {mode === "list" && (loading ? <p className="notice" role="status">프로젝트를 불러오는 중입니다.</p> : projects.length === 0 ? <section className="project-empty"><span aria-hidden="true">✳</span><h2>아직 프로젝트가 없어요</h2><p>새 프로젝트를 만들면 기본 파트와 카운터가 함께 준비됩니다.</p><button className="button" type="button" onClick={startCreate}>첫 프로젝트 만들기</button></section> : <ul className="project-list">{projects.map((project) => <li className="project-card" key={project.id}>
       <div className="project-card-head"><span className={`project-status project-status--${project.status}`}>{projectStatusLabels[project.status]}</span><time dateTime={project.updatedAt}>최근 수정 {dateLabel(project.updatedAt)}</time></div>
       <h2>{project.name}</h2>{project.notes && <p className="project-notes">{project.notes}</p>}
-      <div className="project-card-actions"><Link className="button" href={`/account/${project.workItemId}`}>기본 파트 카운터 열기</Link><button type="button" onClick={() => startEdit(project)} disabled={busy}>수정</button>
+      <div className="project-card-actions"><Link className="button" href={`/projects/${project.id}`}>프로젝트 상세 보기</Link><button type="button" onClick={() => startEdit(project)} disabled={busy}>수정</button>
         <label className="project-status-picker">상태 <select aria-label={`${project.name} 상태`} value={project.status} onChange={(event) => void changeStatus(project, event.target.value as ProjectStatus)} disabled={busy}>{Object.entries(projectStatusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
         <button type="button" className="project-delete" onClick={(event) => { deleteTriggerRef.current = event.currentTarget; setDeleteTarget(project); }} disabled={busy}>삭제</button></div>
     </li>)}</ul>)}

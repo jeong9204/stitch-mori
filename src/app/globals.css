@@ -268,3 +268,44 @@ button { cursor: pointer; }
   .project-card-actions > .button { width: 100%; }
   .project-form-actions > .button { flex: 1; }
 }
+
+/* Phase 2B project detail and independent parts */
+.project-detail-page { display: grid; gap: 20px; max-width: 920px; min-width: 0; margin: 0 auto; padding: 30px 0 60px; }
+.project-detail-back a { display: inline-flex; align-items: center; min-height: 44px; color: var(--color-primary-contrast); font-weight: 800; text-decoration: none; }
+.project-detail-hero, .project-resume, .project-parts-section { min-width: 0; padding: clamp(20px, 4vw, 29px); border: 1px solid var(--color-line); border-radius: 23px; background: var(--color-card); box-shadow: var(--shadow-card); }
+.project-detail-hero .eyebrow, .project-resume .eyebrow, .project-parts-heading .eyebrow { margin: 0 0 7px; }
+.project-detail-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.project-detail-title h1 { min-width: 0; margin: 0; font-size: clamp(1.75rem, 5vw, 2.55rem); letter-spacing: -.04em; overflow-wrap: anywhere; }
+.project-detail-hero .project-notes { margin: 15px 0 0; }
+.project-detail-updated { margin: 15px 0 0; color: var(--color-text-secondary); font-size: .83rem; }
+.project-detail-page .notice a { color: var(--color-primary-contrast); font-weight: 800; }
+.project-resume { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: linear-gradient(135deg, #fffaf6, #f9e7eb); }
+.project-resume h2 { margin: 0 0 6px; font-size: 1.3rem; overflow-wrap: anywhere; }
+.project-resume p:last-child { margin: 0; color: var(--color-text-secondary); font-size: .87rem; }
+.project-parts-heading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+.project-parts-heading h2 { margin: 0 0 7px; font-size: 1.45rem; }
+.project-parts-heading p:last-child { margin: 0; color: var(--color-text-secondary); font-size: .85rem; line-height: 1.5; }
+.project-part-list { display: grid; gap: 13px; margin: 22px 0 0; padding: 0; list-style: none; }
+.project-part-card { min-width: 0; padding: 20px; border: 1px solid var(--color-line); border-radius: 19px; background: #fffaf7; }
+.project-part-card-top { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.project-part-index { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--color-soft-rose); color: var(--color-primary-contrast); font-weight: 800; }
+.project-part-title { display: flex; align-items: center; min-width: 0; gap: 8px; flex-wrap: wrap; }
+.project-part-title h3 { min-width: 0; margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.project-part-title span { color: #34552f; background: var(--color-soft-sage); border-radius: 999px; padding: 4px 9px; font-size: .74rem; font-weight: 800; }
+.project-part-counts { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0 7px; }
+.project-part-counts span { min-width: 110px; padding: 8px 12px; border-radius: 12px; background: #f8ebe8; color: var(--color-text-secondary); }
+.project-part-counts strong { margin-left: 5px; color: var(--color-text); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.project-part-last { margin: 0; color: var(--color-text-secondary); font-size: .82rem; }
+.project-part-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 16px; }
+.project-part-controls button { min-height: 44px; padding: 8px 11px; border: 1px solid #d9b8bd; border-radius: 11px; background: #fff; color: var(--color-primary-contrast); font-weight: 800; }
+.project-part-controls button:disabled { opacity: .45; cursor: not-allowed; }
+.project-part-controls .project-part-delete { color: var(--color-error); border-color: #d7a0a5; }
+.project-part-form { display: grid; gap: 9px; margin-top: 15px; padding: 15px; border-radius: 15px; background: #f9f2ec; }
+.project-part-form label { font-weight: 800; }
+.project-part-form input { width: 100%; min-width: 0; min-height: 46px; padding: 9px 12px; border: 1px solid #c8b4a8; border-radius: 11px; background: #fff; color: var(--color-text); font: inherit; }
+@media (max-width: 420px) {
+  .project-detail-page { padding-top: 12px; }
+  .project-resume > .button, .project-parts-heading > .button { width: 100%; }
+  .project-part-controls > .button { width: 100%; }
+  .project-part-counts span { flex: 1; }
+}

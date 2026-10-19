@@ -18,7 +18,9 @@ function actionText(action: CounterAction): string {
   return "직전 변경 실행 취소";
 }
 
-export function ServerCounterPanel({ userId, workItemId }: { userId: string; workItemId: string }) {
+export function ServerCounterPanel({ userId, workItemId, backHref = "/account", title = "계정 카운터", eyebrow = "계정에 저장된 기록", readOnlyReason }: {
+  userId: string; workItemId: string; backHref?: string; title?: string; eyebrow?: string; readOnlyReason?: string;
+}) {
   const router = useRouter();
   const [client] = useState(createClient);
   const [session] = useState(() => new ServerCounterSession(userId, workItemId,
@@ -49,11 +51,12 @@ export function ServerCounterPanel({ userId, workItemId }: { userId: string; wor
   }, [discarding]);
 
   if (!authorized) return <p role="status">계정 상태를 확인하고 있습니다.</p>;
-  const canEdit = view.status === "saved" || view.status === "pending" || view.status === "queueing";
+  const canEdit = !readOnlyReason && (view.status === "saved" || view.status === "pending" || view.status === "queueing");
   const confirmed = view.confirmed;
 
   return <div className="quick-page server-counter-page">
-    <div className="quick-heading"><Link className="quick-back" href="/account" aria-label="계정 작업 목록으로 돌아가기">←</Link><div><p className="eyebrow">계정에 저장된 기록</p><h1>계정 카운터</h1></div></div>
+    <div className="quick-heading"><Link className="quick-back" href={backHref} aria-label="이전 화면으로 돌아가기">←</Link><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div></div>
+    {readOnlyReason && <p className="notice" role="status">{readOnlyReason} <Link href={backHref}>프로젝트로 돌아가기</Link></p>}
     <p className="server-boundary">이 작업은 계정 서버에 저장됩니다. <Link href="/quick">이 기기의 간편 카운터</Link>와는 별도 기록입니다.</p>
     <div className={`quick-status quick-status--${view.status}`} role="status" aria-live="polite">
       <span className="quick-status-dot" aria-hidden="true" />

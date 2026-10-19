@@ -116,6 +116,19 @@ describe("server counter durable command queue", () => {
     expect(await queue.pending(userId, workItemId)).toHaveLength(1);
   });
 
+  it("keeps durable part queues separated by work item within one project account", async () => {
+    const { queue } = fixture();
+    const sleeveId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const makeCommand = (id: string): CounterCommand => ({ commandId: crypto.randomUUID(), workItemId: id,
+      expectedRevision: 0, occurredAt: new Date().toISOString(), deviceId: "parts-device", action: plus });
+    await queue.add(userId, workItemId, makeCommand(workItemId));
+    await queue.add(userId, sleeveId, makeCommand(sleeveId));
+    expect((await queue.pending(userId, workItemId)).map(item => item.workItemId)).toEqual([workItemId]);
+    expect((await queue.pending(userId, sleeveId)).map(item => item.workItemId)).toEqual([sleeveId]);
+    await queue.clear(userId, workItemId);
+    expect(await queue.pending(userId, sleeveId)).toHaveLength(1);
+  });
+
   it("applies row completion, targets, direct edits, and undo through the same RPC contract", async () => {
     const { remote, session } = fixture();
     await session.load();
