@@ -15,31 +15,34 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="page-stack">
-      <section className="hero">
-        <p className="eyebrow">한 코씩 쌓이는 나의 뜨개 이야기</p>
-        <h1>StitchMori</h1>
-        <p>뜨개 작업을 위한 카운터와 프로젝트 공간을 준비하고 있어요.</p>
+    <div className="page-stack home-page">
+      <section className="hero home-intro">
+        <p className="eyebrow">나의 뜨개 작업실</p>
+        <h1>한 코씩, 오늘의 이야기를 쌓아요.</h1>
+        <p>지금 필요한 코수와 단수를 간편하게 기록해 보세요.</p>
       </section>
-      <section className="card-grid" aria-label="시작 메뉴">
-        <article className="card">
-          <h2>간편 카운터</h2>
-          <p>로그인 없이 코수와 단수를 세고 이 브라우저에 기록할 수 있습니다.</p>
-          <Link className="button" href="/quick">간편 카운터 시작</Link>
-        </article>
-        <article className="card">
-          <h2>프로젝트 관리</h2>
-          <p>프로젝트 기능은 로그인 후 제공될 예정입니다.</p>
-          <Link className="button button-secondary" href={email ? "/projects" : "/login"}>
-            {email ? "준비 상태 보기" : "로그인하기"}
-          </Link>
+      <section aria-label="시작 메뉴" className="home-actions">
+        <Link className="home-quick-link" href="/quick">
+          <span className="home-quick-kicker">로그인 없이 바로 시작</span>
+          <span className="home-quick-title">간편 카운터 <span aria-hidden="true">↗</span></span>
+          <span className="home-quick-copy">지금 바로 카운트를 시작해요.</span>
+          <span className="home-quick-decoration" aria-hidden="true">✳</span>
+        </Link>
+        <article className="home-project-card">
+          <div>
+            <p className="eyebrow">다음에 만나요</p>
+            <h2>프로젝트 관리</h2>
+            <p>프로젝트 목록과 작업 파트는 준비 중이에요. 간편 카운터는 지금 사용할 수 있습니다.</p>
+          </div>
+          <span className="coming-soon">Phase 2 준비 중</span>
+          {!email && <Link className="text-link" href="/login">이메일로 로그인하기 <span aria-hidden="true">→</span></Link>}
         </article>
       </section>
-      <section className="account-panel">
+      <section className="account-panel" aria-label="계정 상태">
         {email ? (
           <><span>{email} 계정으로 로그인됨</span><SignOutButton /></>
         ) : (
-          <span>로그인 없이 간편 카운터를 사용할 수 있습니다.</span>
+          <span>간편 기록은 현재 기기의 브라우저에 저장됩니다.</span>
         )}
       </section>
       {!hasSupabaseEnv() && (
