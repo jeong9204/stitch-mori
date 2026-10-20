@@ -322,3 +322,9 @@ button { cursor: pointer; }
 .recovery-list h3 { margin: 0 0 8px; font-size: 1.1rem; overflow-wrap: anywhere; }
 .recovery-list p { margin: 4px 0; font-size: .83rem; color: var(--color-text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
 @media (max-width: 420px) { .recovery-list li > .button { width: 100%; } .recovery-panel { padding: 16px; } }
+
+.conversion-form { display: grid; gap: 10px; margin-top: 22px; }
+.conversion-form label { font-weight: 800; }
+.conversion-form input { min-width: 0; width: 100%; min-height: 48px; border: 1px solid #c8b4a8; border-radius: 12px; background: #fff; padding: 10px 12px; color: var(--color-text); font: inherit; }
+.conversion-preservation { color: var(--color-text-secondary); font-size: .88rem; line-height: 1.6; }
+.quick-convert-link { margin: 15px 0; text-align: center; font-size: .85rem; color: var(--color-text-secondary); }

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export function EmailOtpForm() {
+export function EmailOtpForm({ nextPath = "/import" }: { nextPath?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -40,7 +40,7 @@ export function EmailOtpForm() {
       setMessage(`인증에 실패했습니다: ${error.message}`);
       return;
     }
-    router.push("/import");
+    router.push(nextPath);
     router.refresh();
   }
 

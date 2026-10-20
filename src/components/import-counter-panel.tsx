@@ -6,29 +6,14 @@ import { useCallback, useEffect, useState } from "react";
 import { CounterImportService } from "@/data/import/import-service";
 import { SupabaseImportStore, type AccountWorkItemSummary } from "@/data/import/supabase-import-store";
 import type { LocalImportSnapshot } from "@/data/import/types";
-import { quickCounterSession, quickCounterStore } from "@/data/local/quick-session";
+import { quickCounterStore } from "@/data/local/quick-session";
+import { hasPendingQuickTab } from "@/data/local/quick-import-guard";
 import type { LocalCounterRecord } from "@/data/local/types";
 import { lastCountOccurredAt } from "@/domain/counter/engine";
 import { createClient } from "@/lib/supabase/client";
 
 function displayTime(value: string | null): string {
   return value ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value)) : "아직 없음";
-}
-
-async function hasPendingQuickTab(): Promise<boolean> {
-  const current = quickCounterSession.getSnapshot();
-  if (current.pendingCount > 0 || current.status === "failed") return true;
-  const channel = new BroadcastChannel("stitchmori-import-v1");
-  const nonce = crypto.randomUUID();
-  let pending = false;
-  channel.onmessage = (message: MessageEvent<{ type?: string; nonce?: string; status?: string; pendingCount?: number }>) => {
-    if (message.data.type === "status-response" && message.data.nonce === nonce
-      && (message.data.pendingCount || message.data.status === "failed")) pending = true;
-  };
-  channel.postMessage({ type: "status-request", nonce });
-  await new Promise((resolve) => setTimeout(resolve, 250));
-  channel.close();
-  return pending;
 }
 
 export function ImportCounterPanel({ userId, email }: { userId: string; email: string }) {

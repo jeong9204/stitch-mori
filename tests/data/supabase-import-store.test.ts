@@ -32,16 +32,13 @@ describe("Supabase import adapter", () => {
   });
 
   it("lists owner-scoped work items with their two counters", async () => {
-    const order = vi.fn().mockResolvedValue({ data: [{
-      id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", revision: 2, created_at: "2026-10-19T00:00:00Z",
-      counters: [{ counter_type: "stitch", current_value: 4 }, { counter_type: "row", current_value: 1 }],
+    const rpc = vi.fn().mockResolvedValue({ data: [{
+      id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", revision: 2, createdAt: "2026-10-19T00:00:00Z", stitch: 4, row: 1,
     }], error: null });
-    const select = vi.fn().mockReturnValue({ order });
-    const from = vi.fn().mockReturnValue({ select });
-    const store = new SupabaseImportStore({ from } as unknown as SupabaseClient);
+    const store = new SupabaseImportStore({ rpc } as unknown as SupabaseClient);
     expect(await store.listWorkItems()).toEqual([{
       id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", revision: 2, createdAt: "2026-10-19T00:00:00Z", stitch: 4, row: 1,
     }]);
-    expect(from).toHaveBeenCalledWith("work_items");
+    expect(rpc).toHaveBeenCalledWith("list_account_counters");
   });
 });

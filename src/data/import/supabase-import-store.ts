@@ -42,16 +42,10 @@ export class SupabaseImportStore implements CounterImportRemote {
   }
 
   async listWorkItems(): Promise<AccountWorkItemSummary[]> {
-    const { data, error } = await this.client.from("work_items")
-      .select("id,revision,created_at,counters(counter_type,current_value)")
-      .order("created_at", { ascending: false });
+    const { data, error } = await this.client.rpc("list_account_counters");
     if (error) throw new Error(error.message);
-    return (data ?? []).map((item) => {
-      const counters = Array.isArray(item.counters) ? item.counters : [];
-      const stitch = counters.find((counter) => counter.counter_type === "stitch");
-      const row = counters.find((counter) => counter.counter_type === "row");
-      if (!stitch || !row) throw new Error("계정 카운터 데이터가 완전하지 않습니다.");
-      return { id: String(item.id), revision: Number(item.revision), createdAt: String(item.created_at), stitch: Number(stitch.current_value), row: Number(row.current_value) };
-    });
+    if (!Array.isArray(data)) throw new Error("계정 카운터 목록 응답이 올바르지 않습니다.");
+    return data.map((item) => ({ id: String(item.id), revision: Number(item.revision),
+      createdAt: String(item.createdAt), stitch: Number(item.stitch), row: Number(item.row) }));
   }
 }

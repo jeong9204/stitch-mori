@@ -22,6 +22,7 @@ export default async function AccountCounterPage({ params }: { params: Promise<{
   const project = part?.projects as LinkedProject | null | undefined;
   return <ServerCounterPanel userId={data.claims.sub} workItemId={workItemId}
     backHref={part ? `/projects/${part.project_id}` : "/account"}
+    conversionHref={part ? undefined : `/convert/account/${workItemId}`}
     title={part?.name ?? "계정 카운터"} eyebrow={project?.name ?? "계정에 저장된 기록"}
     readOnlyReason={project && project.status !== "active" ? "카운트하려면 프로젝트 상태를 진행 중으로 변경해 주세요." : undefined} />;
 }
