@@ -328,3 +328,31 @@ button { cursor: pointer; }
 .conversion-form input { min-width: 0; width: 100%; min-height: 48px; border: 1px solid #c8b4a8; border-radius: 12px; background: #fff; padding: 10px 12px; color: var(--color-text); font: inherit; }
 .conversion-preservation { color: var(--color-text-secondary); font-size: .88rem; line-height: 1.6; }
 .quick-convert-link { margin: 15px 0; text-align: center; font-size: .85rem; color: var(--color-text-secondary); }
+
+/* Phase 2D: project gauge records */
+.gauge-section { min-width: 0; padding: clamp(16px,4vw,29px); border: 1px solid var(--color-line); border-radius: 23px; background: var(--color-card); box-shadow: var(--shadow-card); }
+.gauge-section h2 { margin: 5px 0 10px; }
+.gauge-section header > p:last-child, .gauge-heading p, .gauge-empty, .gauge-help { color: var(--color-text-secondary); font-size: .88rem; line-height: 1.6; }
+.gauge-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin: 26px 0 14px; }
+.gauge-heading h3, .gauge-heading p { margin: 0; }
+.gauge-samples { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.gauge-card { min-width: 0; padding: 18px; background: #fffaf7; border: 1px solid var(--color-line); border-radius: 18px; overflow-wrap: anywhere; }
+.gauge-card h3 { margin: 0 0 14px; }
+.gauge-card p { margin: 8px 0; line-height: 1.6; }
+.gauge-measurement { display: grid; gap: 5px; }
+.gauge-measurement strong { font-size: 1.25rem; }
+.gauge-badge { display: inline-block; background: var(--color-soft-sage); border-radius: 10px; padding: 3px 9px; color: #34552f; font-size: .82rem; }
+.gauge-notes { white-space: pre-wrap; }
+.gauge-timestamp { color: var(--color-text-secondary); font-size: .8rem; }
+.gauge-dialog { width: min(calc(100vw - 24px),560px); padding: clamp(16px,4vw,25px); }
+.gauge-fields { min-width: 0; display: grid; gap: 14px; border: 0; padding: 0; margin: 18px 0; }
+.gauge-fields label { display: grid; min-width: 0; gap: 7px; font-weight: 700; }
+.gauge-fields input, .gauge-fields select, .gauge-fields textarea { width: 100%; min-width: 0; min-height: 46px; padding: 9px 11px; border: 1px solid #c8b4a8; border-radius: 11px; background: #fff; color: var(--color-text); font: inherit; }
+.gauge-fields textarea { resize: vertical; }
+.gauge-field-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.gauge-fields .gauge-help { margin: -5px 0 0; }
+.gauge-refresh { margin-top: 20px; }
+@media (max-width: 600px) { .gauge-samples { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 375px) { .gauge-heading > .button { width: 100%; } .gauge-field-pair { gap: 8px; } }
+.gauge-server-review { padding: 14px; border-radius: 13px; background: #f9ebe9; overflow-wrap: anywhere; }
+.gauge-server-review h3 { margin: 0 0 8px; font-size: 1rem; }
