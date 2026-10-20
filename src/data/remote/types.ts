@@ -10,5 +10,6 @@ export interface RemoteCounterStore {
   createWorkItem(): Promise<CounterState>;
   getWorkItem(id: string): Promise<CounterState | null>;
   getEvents(id: string): Promise<CounterEvent[]>;
+  getRecoveryRevision?(id: string): Promise<number | null>;
   applyCommand(command: CounterCommand): Promise<RemoteCounterCommandResult>;
 }

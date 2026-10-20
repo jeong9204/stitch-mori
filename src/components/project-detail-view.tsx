@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DeletedRecordsPanel } from "@/components/deleted-records-panel";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IndexedDbServerCommandQueue } from "@/data/remote/server-command-queue";
@@ -122,7 +123,8 @@ export function ProjectDetailView({ userId, projectId }: { userId: string; proje
           {renamingId === part.id && <form className="project-part-form" onSubmit={(event) => { event.preventDefault(); void run({ type: "rename", partId: part.id, name: renameValue }); }}><label htmlFor={`rename-${part.id}`}>파트명 수정</label><input id={`rename-${part.id}`} autoFocus required maxLength={120} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} disabled={busy || !!pending} /><div className="project-form-actions"><button className="button" type="submit" disabled={busy || !!pending}>이름 저장</button><button className="button button-secondary" type="button" onClick={() => setRenamingId(null)} disabled={busy || !!pending}>취소</button></div></form>}
         </li>)}</ol>
       </section>
+      <DeletedRecordsPanel userId={userId} projectId={projectId} onRestored={load} />
     </>}
-    <dialog ref={deleteDialogRef} className="project-confirm" onClose={() => { setDeleteTarget(null); deleteTriggerRef.current?.focus(); }} onCancel={() => setDeleteTarget(null)} aria-labelledby="part-delete-title" aria-describedby="part-delete-description"><h2 id="part-delete-title">파트를 삭제할까요?</h2><p id="part-delete-description">{deleteTarget?.name}은 목록에서 숨겨집니다. 카운터와 변경 기록은 보존되며, 복구 화면은 후속 단계에서 제공할 예정입니다.</p><div className="project-form-actions"><button type="button" className="button project-delete-button" onClick={() => { if (deleteTarget) void run({ type: "delete", partId: deleteTarget.id }); }} disabled={busy || !!pending}>파트 삭제</button><button type="button" className="button button-secondary" autoFocus onClick={closeDelete} disabled={busy || !!pending}>취소</button></div></dialog>
+    <dialog ref={deleteDialogRef} className="project-confirm" onClose={() => { setDeleteTarget(null); deleteTriggerRef.current?.focus(); }} onCancel={() => setDeleteTarget(null)} aria-labelledby="part-delete-title" aria-describedby="part-delete-description"><h2 id="part-delete-title">파트를 삭제할까요?</h2><p id="part-delete-description">{deleteTarget?.name}은 목록에서 숨겨집니다. 카운터와 변경 기록은 보존되며, 삭제된 파트 보기에서 복구할 수 있습니다.</p><div className="project-form-actions"><button type="button" className="button project-delete-button" onClick={() => { if (deleteTarget) void run({ type: "delete", partId: deleteTarget.id }); }} disabled={busy || !!pending}>파트 삭제</button><button type="button" className="button button-secondary" autoFocus onClick={closeDelete} disabled={busy || !!pending}>취소</button></div></dialog>
   </div>;
 }

@@ -71,6 +71,13 @@ export class SupabaseCounterStore implements RemoteCounterStore {
     });
   }
 
+  async getRecoveryRevision(id: string): Promise<number | null> {
+    const { data, error } = await this.client.from("work_items").select("recovery_revision").eq("id", id).maybeSingle();
+    if (error) throw remoteError(error.message);
+    if (!data) throw new Error("이 계정에서 작업을 찾을 수 없습니다.");
+    return data.recovery_revision === null ? null : revision(data.recovery_revision);
+  }
+
   async getEvents(id: string): Promise<CounterEvent[]> {
     const events: CounterEvent[] = [];
     const pageSize = 500;

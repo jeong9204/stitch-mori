@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DeletedRecordsPanel } from "@/components/deleted-records-panel";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -134,6 +135,7 @@ export function ProjectManager({ userId }: { userId: string }) {
       <h2 id="project-delete-title">프로젝트를 목록에서 삭제할까요?</h2><p id="project-delete-description">{deleteTarget?.name}은 목록에서 숨겨집니다. 기본 파트의 카운터와 변경 기록은 삭제되지 않습니다.</p>
       <div className="project-form-actions"><button className="button project-delete-button" type="button" onClick={() => void confirmDelete()} disabled={busy}>프로젝트 삭제</button><button className="button button-secondary" type="button" autoFocus onClick={closeDelete} disabled={busy}>취소</button></div>
     </dialog>
+    <DeletedRecordsPanel userId={userId} onRestored={refresh} />
     <nav className="project-footer"><Link href="/quick">이 기기의 간편 카운터</Link><Link href="/account">계정 카운터 목록</Link></nav>
   </div>;
 }

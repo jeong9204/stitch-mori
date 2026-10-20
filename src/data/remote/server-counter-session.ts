@@ -13,10 +13,11 @@ export interface ServerCounterView {
   pending: PendingServerCommand[];
   status: ServerSaveStatus;
   error: string;
+  recoveryReviewRequired: boolean;
 }
 
 const INITIAL: ServerCounterView = {
-  confirmed: null, display: null, events: [], confirmedRevision: 0, pending: [], status: "loading", error: "",
+  confirmed: null, display: null, events: [], confirmedRevision: 0, pending: [], status: "loading", error: "", recoveryReviewRequired: false,
 };
 
 /** Serializes commands while keeping the durable outbox separate from the guest counter queue. */
@@ -27,6 +28,8 @@ export class ServerCounterSession {
   private enqueueTail: Promise<unknown> = Promise.resolve();
   private drainPromise: Promise<void> | null = null;
   private active = true;
+  private reviewedRecoveryRevision: number | null = null;
+  private heldRecoveryRevision: number | null = null;
 
   constructor(
     private readonly userId: string,
@@ -81,10 +84,19 @@ export class ServerCounterSession {
       if (!await this.sameUser()) throw new Error("로그인 계정이 변경되었습니다.");
       const { state, events } = await this.serverSnapshot();
       this.confirmedEvents = events;
+      const recoveryRevision = await this.remote.getRecoveryRevision?.(this.workItemId) ?? null;
+      if (recoveryRevision !== null && this.reviewedRecoveryRevision !== recoveryRevision
+        && pending.some((item) => item.command.expectedRevision <= recoveryRevision)) {
+        this.heldRecoveryRevision = recoveryRevision;
+        this.publish({ confirmed: state, display: state, events, confirmedRevision: state.revision, pending,
+          status: "conflict", recoveryReviewRequired: true,
+          error: "복구된 작업에 미확정 명령이 남아 있습니다. 자동 전송하지 않았습니다. 서버 값과 대기 명령을 확인해 주세요." });
+        return;
+      }
       const preview = this.preview(state, events, pending);
       const firstAlreadyApplied = pending.length > 0 && events.some((event) => event.commandId === pending[0].command.commandId);
       this.publish({ confirmed: state, display: preview?.state ?? state,
-        events: preview?.events ?? events, confirmedRevision: state.revision, pending,
+        events: preview?.events ?? events, confirmedRevision: state.revision, pending, recoveryReviewRequired: false,
         status: pending.length === 0 ? "saved" : preview || firstAlreadyApplied ? "pending" : "conflict",
         error: pending.length > 0 && !preview && !firstAlreadyApplied ? "다른 기기 또는 탭에서 서버 기록이 변경되었습니다. 대기 명령은 보존했습니다." : "" });
       if (pending.length > 0 && (preview || firstAlreadyApplied)) void this.drain();
@@ -134,6 +146,7 @@ export class ServerCounterSession {
   }
 
   retry(): Promise<void> {
+    if (this.view.recoveryReviewRequired) return this.load();
     if (this.drainPromise) return this.drainPromise;
     if (!this.view.confirmed || this.view.pending.length === 0) return this.load();
     if (this.view.status === "conflict") return this.refreshConflict();
@@ -147,6 +160,7 @@ export class ServerCounterSession {
   }
 
   async refreshConflict(): Promise<void> {
+    if (this.view.recoveryReviewRequired) return this.load();
     if (!await this.sameUser()) { this.publish({ ...this.view, status: "failed", error: "로그인 계정이 변경되었습니다." }); return; }
     try {
       const { state, events } = await this.serverSnapshot();
@@ -160,6 +174,13 @@ export class ServerCounterSession {
     } catch (cause) {
       this.publish({ ...this.view, status: "failed", error: cause instanceof Error ? cause.message : "서버 기록을 불러오지 못했습니다." });
     }
+  }
+
+  /** Explicit user confirmation, followed by the normal revision checks; never rebases a command. */
+  async confirmRecoveryRetry(): Promise<void> {
+    if (!this.view.recoveryReviewRequired) return;
+    this.reviewedRecoveryRevision = this.heldRecoveryRevision;
+    await this.load();
   }
 
   async discardPending(): Promise<void> {

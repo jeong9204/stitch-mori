@@ -15,6 +15,8 @@ class MemoryRemote implements RemoteCounterStore {
   events: CounterEvent[] = [];
   commands: CounterCommand[] = [];
   loseNextResponse = false;
+  recoveryRevision: number | null = null;
+  async getRecoveryRevision() { return this.recoveryRevision; }
   gate: Promise<void> | null = null;
 
   async createWorkItem() { return this.state; }
@@ -148,6 +150,55 @@ describe("server counter durable command queue", () => {
     expect(remote.state.stitch.current).toBe(7);
     expect(remote.state.row.current).toBe(1);
     expect(remote.events.map((event) => event.commandId)).toEqual(remote.commands.map((command) => command.commandId));
+  });
+
+  it("holds restored-work pending commands through reload/retry until explicit confirmation", async () => {
+    const { queue, remote, session } = fixture();
+    remote.recoveryRevision = 0;
+    await queue.add(userId, workItemId, { commandId: crypto.randomUUID(), workItemId, expectedRevision: 0,
+      occurredAt: new Date().toISOString(), deviceId: "other-device", action: plus });
+    await session.load();
+    await session.retry();
+    await session.refreshConflict();
+    expect(session.getSnapshot().recoveryReviewRequired).toBe(true);
+    expect(session.getSnapshot().display?.stitch.current).toBe(0);
+    expect(remote.commands).toHaveLength(0);
+    expect(await queue.pending(userId, workItemId)).toHaveLength(1);
+    await session.confirmRecoveryRetry();
+    await session.whenSettled();
+    expect(remote.state.stitch.current).toBe(1);
+    expect(await queue.pending(userId, workItemId)).toHaveLength(0);
+    remote.recoveryRevision = 1;
+    await queue.add(userId, workItemId, { commandId: crypto.randomUUID(), workItemId, expectedRevision: 1,
+      occurredAt: new Date().toISOString(), deviceId: "another-recovery", action: plus });
+    await session.load();
+    expect(session.getSnapshot().recoveryReviewRequired).toBe(true);
+    expect(remote.commands).toHaveLength(1);
+  });
+
+  it("keeps the revision conflict after recovery confirmation without rebasing or clearing pending commands", async () => {
+    const { queue, remote, session } = fixture();
+    await remote.applyCommand({ commandId: crypto.randomUUID(), workItemId, expectedRevision: 0,
+      occurredAt: new Date().toISOString(), deviceId: "server-device", action: plus });
+    remote.recoveryRevision = 1;
+    await queue.add(userId, workItemId, { commandId: crypto.randomUUID(), workItemId, expectedRevision: 0,
+      occurredAt: new Date().toISOString(), deviceId: "offline-device", action: plus });
+    await session.load();
+    await session.confirmRecoveryRetry();
+    await session.whenSettled();
+    expect(session.getSnapshot().status).toBe("conflict");
+    expect(remote.commands).toHaveLength(1);
+    expect((await queue.pending(userId, workItemId))[0].command.expectedRevision).toBe(0);
+  });
+
+  it("allows fresh counting on restored work when no commands are pending", async () => {
+    const { remote, session } = fixture();
+    remote.recoveryRevision = 0;
+    await session.load();
+    expect(session.getSnapshot().recoveryReviewRequired).toBe(false);
+    await session.enqueue(plus);
+    await session.whenSettled();
+    expect(remote.state.stitch.current).toBe(1);
   });
 
   it("does not call the RPC when the durable queue write fails", async () => {

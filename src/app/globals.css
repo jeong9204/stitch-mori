@@ -309,3 +309,16 @@ button { cursor: pointer; }
   .project-part-controls > .button { width: 100%; }
   .project-part-counts span { flex: 1; }
 }
+
+.recovery-panel { min-width: 0; padding: 20px; border: 1px solid var(--color-line); border-radius: 22px; background: var(--color-card); }
+.recovery-toggle { max-width: 100%; }
+.recovery-content { margin-top: 20px; }
+.recovery-content h2 { margin: 0 0 12px; font-size: 1.25rem; }
+.recovery-policy, .recovery-empty { color: var(--color-text-secondary); line-height: 1.6; font-size: .88rem; }
+.recovery-success { padding: 12px 15px; border-radius: 12px; background: var(--color-soft-sage); color: #34552f; }
+.recovery-list { display: grid; gap: 12px; list-style: none; padding: 0; margin: 16px 0 0; }
+.recovery-list li { min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; padding: 18px; border: 1px solid var(--color-line); border-radius: 16px; background: #fffaf7; }
+.recovery-list li > div { min-width: 0; flex: 1 1 190px; }
+.recovery-list h3 { margin: 0 0 8px; font-size: 1.1rem; overflow-wrap: anywhere; }
+.recovery-list p { margin: 4px 0; font-size: .83rem; color: var(--color-text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .recovery-list li > .button { width: 100%; } .recovery-panel { padding: 16px; } }
