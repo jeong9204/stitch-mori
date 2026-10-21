@@ -119,5 +119,18 @@ export class IndexedDbTimerStore {
       store.delete("local_pending");
     });
   }
+  async localStatisticsSource() {
+    return this.transaction(["sessions","events","meta"],"readonly",async tx=>({
+      states:await result(tx.objectStore("sessions").getAll()) as WorkSession[],
+      events:await result(tx.objectStore("events").getAll()) as TimerEvent[],
+      pending:(await result(tx.objectStore("meta").get("local_pending")))?.value as TimerCommand | undefined,
+    }));
+  }
+  async updateUi<T>(key:string,update:(current:T|null)=>T):Promise<T> {
+    return this.transaction(["meta"],"readwrite",async tx=>{
+      const store=tx.objectStore("meta"),current=(await result(store.get(`ui:${key}`)))?.value ?? null;
+      const value=update(current);store.put({key:`ui:${key}`,value});return value;
+    });
+  }
   async close(): Promise<void> { if (this.dbPromise) (await this.dbPromise).close(); this.dbPromise = null; }
 }

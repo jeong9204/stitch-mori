@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { InactivityPrompt } from "./inactivity-prompt";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { TimerController } from "@/data/timer/timer-controller";
 const labels={running:"작업 중",paused:"일시정지",ended:"종료"};
@@ -54,6 +55,7 @@ export function TimerCard({controller,readOnlyReason}: {controller:TimerControll
     <label className="timer-mode">시작 방식<select value={context?.mode??"manual"} disabled={busy||!!view.pending||!context||!!readOnlyReason} onChange={e=>changed(controller.setMode(e.target.value as "manual"|"auto"))}><option value="manual">수동 시작</option><option value="auto">자동 시작</option></select></label>
     <p className="timer-help">자동 모드는 실제 코수·단수 변경이 저장된 뒤 시작합니다. 일시정지 상태를 자동 재개하지 않습니다. 로컬과 서버 타이머는 별개이며 동시에 실행될 수 있습니다.</p>
     {readOnlyReason && <p className="timer-help">{readOnlyReason} 타이머 시작·재개가 제한됩니다.</p>}
+    {state?.status==="running" && <InactivityPrompt key={state.sessionId} controller={controller} sessionId={state.sessionId} pending={!!view.pending} />}
     <dialog ref={dialog} className="project-confirm" aria-labelledby="timer-confirm-title" onCancel={()=>setModal(null)} onClose={()=>{setModal(null);(trigger.current?.isConnected && !trigger.current.disabled ? trigger.current : heading.current)?.focus();}}>
       <h2 id="timer-confirm-title">{modal==="end"?"이번 작업을 종료할까요?":"미확정 요청 보관을 해제할까요?"}</h2>
       <p>{modal==="end"?"종료한 세션은 재개할 수 없습니다. 다음 작업은 새 세션으로 기록합니다.":"최신 상태를 조회한 뒤 이 기기의 대기 요청만 해제합니다. 서버 요청을 취소하는 동작이 아니며 이미 적용됐거나 나중에 도착할 수 있습니다. 서버 상태와 카운터 기록은 삭제하지 않습니다."}</p>

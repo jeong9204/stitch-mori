@@ -1,3 +1,4 @@
+import { activityBaseline, inactivityDue, type InactivitySnapshot, type InactivityRecord, type InactivityChoice } from "../../domain/timer/inactivity";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { IndexedDbCounterStore } from "../local/indexeddb-counter-store";
 import type { TimerCommand, TimerResult, WorkSession } from "../../domain/timer/types";
@@ -11,6 +12,8 @@ export type TimerContext = {
 };
 export interface TimerUiBackend {
   scope: string; workItemId: string; server: boolean;
+  readInactivity?(sessionId:string):Promise<InactivitySnapshot>;
+  ackInactivity?(snapshot:InactivitySnapshot,choice:InactivityChoice|"show"):Promise<boolean>;
   load(): Promise<TimerContext>; pending(): Promise<TimerCommand | null>;
   send(command: TimerCommand): Promise<TimerResult>; release(commandId: string): Promise<void>;
   setMode(mode: TimerMode, revision: number): Promise<void>;
@@ -36,6 +39,28 @@ export class LocalTimerBackend extends UiJournal implements TimerUiBackend {
     const state=(active?.workItemId===this.workItemId?active:null) ?? history.find(s=>s.sessionId===latest) ?? history.sort((a,b)=>Date.parse(b.startedAt)-Date.parse(a.startedAt))[0] ?? null;
     return { mode: pref?.mode ?? "manual", modeRevision: 0, activationRevision: pref?.activationRevision ?? 0,
       counterRevision: 0, state, active, activeName: "이 기기의 간편 카운터", workName: "이 기기의 간편 카운터", canStart: true, serverNow: new Date().toISOString() };
+  }
+  async readInactivity(sessionId:string):Promise<InactivitySnapshot> {
+    const {state}=await this.store.getLocal(sessionId);
+    if(!state || state.workItemId!==this.workItemId)throw new Error("작업 세션을 확인할 수 없습니다.");
+    const [events,record]=await Promise.all([this.counters.getEvents(this.workItemId),this.store.readUi<InactivityRecord>(`inactivity:${sessionId}`)]);
+    const last=events.filter(e=>(e.before.stitch.current!==e.after.stitch.current || e.before.row.current!==e.after.row.current) && Date.parse(e.occurredAt)>=Date.parse(state.startedAt)).reduce<string|null>((at,e)=>!at||e.occurredAt>at?e.occurredAt:at,null);
+    const baseline=activityBaseline(state,last,record?.continuedAt);
+    return {session:state,baseline,shown:record?.baseline===baseline && record.shown,now:new Date().toISOString()};
+  }
+  async ackInactivity(snapshot:InactivitySnapshot,choice:InactivityChoice|"show") {
+    const latest=await this.readInactivity(snapshot.session.sessionId);
+    if(latest.session.status!=="running" || latest.baseline!==snapshot.baseline)return false;
+    let applied=false;
+    await this.store.updateUi<InactivityRecord>(`inactivity:${snapshot.session.sessionId}`,old=>{
+      if(choice==="show") {
+        if((old?.baseline===snapshot.baseline && old.shown) || !inactivityDue(latest))return old ?? {baseline:snapshot.baseline,shown:false};
+        applied=true;return {baseline:snapshot.baseline,shown:true,continuedAt:old?.continuedAt};
+      }
+      if(old?.baseline!==snapshot.baseline)return old ?? {baseline:snapshot.baseline,shown:false};
+      if(old.choice){applied=old.choice===choice;return old;}
+      applied=true;return {...old,choice,continuedAt:choice==="continue"?new Date().toISOString():old.continuedAt};
+    });return applied;
   }
   pending() { return this.store.pendingLocal(); }
   async send(command: TimerCommand): Promise<TimerResult> {
@@ -73,6 +98,15 @@ export class AccountTimerBackend extends UiJournal implements TimerUiBackend {
     await this.auth();
     if (!data || !["manual","auto"].includes(data.mode) || (data.state && data.state.userId!==this.userId) || (data.active && data.active.userId!==this.userId)) throw new Error("타이머 응답을 확인할 수 없습니다.");
     return data;
+  }
+  async readInactivity(sessionId:string):Promise<InactivitySnapshot> {
+    await this.auth();const {data,error}=await this.client.rpc("get_work_inactivity",{p_session_id:sessionId});
+    if(error)throw new Error(error.message);await this.auth();
+    if(data?.session?.userId!==this.userId || data.session.workItemId!==this.workItemId)throw new Error("세션 소유권을 확인할 수 없습니다.");return data;
+  }
+  async ackInactivity(snapshot:InactivitySnapshot,choice:InactivityChoice|"show") {
+    await this.auth();const {data,error}=await this.client.rpc("ack_work_inactivity",{p_session_id:snapshot.session.sessionId,p_baseline:snapshot.baseline,p_choice:choice});
+    if(error)throw new Error(error.message);await this.auth();return data?.status==="applied" || (data?.status==="duplicate" && data.choice===choice);
   }
   async pending() { return (await this.commands.pending())?.command ?? null; }
   send(command: TimerCommand) { return this.commands.submit(command); }

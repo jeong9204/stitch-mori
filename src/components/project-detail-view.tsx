@@ -1,5 +1,6 @@
 "use client";
 
+import { TimeStatisticsPanel } from "./time-statistics-panel";
 import Link from "next/link";
 import { ProjectGaugePanel } from "@/components/project-gauge-panel";
 import { DeletedRecordsPanel } from "@/components/deleted-records-panel";
@@ -124,6 +125,7 @@ export function ProjectDetailView({ userId, projectId }: { userId: string; proje
           {renamingId === part.id && <form className="project-part-form" onSubmit={(event) => { event.preventDefault(); void run({ type: "rename", partId: part.id, name: renameValue }); }}><label htmlFor={`rename-${part.id}`}>파트명 수정</label><input id={`rename-${part.id}`} autoFocus required maxLength={120} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} disabled={busy || !!pending} /><div className="project-form-actions"><button className="button" type="submit" disabled={busy || !!pending}>이름 저장</button><button className="button button-secondary" type="button" onClick={() => setRenamingId(null)} disabled={busy || !!pending}>취소</button></div></form>}
         </li>)}</ol>
       </section>
+      <TimeStatisticsPanel key={`time:${userId}:${projectId}`} userId={userId} projectId={projectId} />
       <ProjectGaugePanel key={`${userId}:${projectId}`} userId={userId} projectId={projectId} />
       <DeletedRecordsPanel userId={userId} projectId={projectId} onRestored={load} />
     </>}

@@ -1,0 +1,86 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path=public,extensions;
+select no_plan();
+-- Historical sessions are seeded through their public constraints without modifying any history.
+create function pg_temp.seed_session(w uuid,s uuid,a timestamptz,b timestamptz,c timestamptz,d timestamptz) returns uuid language plpgsql as $$
+declare n integer:=1+(b is not null)::int+(c is not null)::int+(d is not null)::int; ids uuid[]; at timestamptz:=coalesce(d,c,b,a); ms bigint:=0; status text; i integer:=0; r record;
+begin
+ select array_agg(gen_random_uuid()) into ids from generate_series(1,n);
+ status:=case when d is not null then 'ended' when c is not null or b is null then 'running' else 'paused' end;
+ if b is not null then ms:=extract(epoch from (b-a))*1000;elsif d is not null then ms:=extract(epoch from (d-a))*1000;end if;
+ if c is not null and d is not null then ms:=ms+extract(epoch from (d-c))*1000;end if;
+ insert into public.work_sessions(id,user_id,work_item_id,status,started_at,ended_at,accumulated_ms,last_resumed_at,last_transition_at,revision,last_command_id,created_at,updated_at)
+ values(s,'cccccccc-0000-4000-8000-000000000001',w,status,a,d,ms,case when status='running' then coalesce(c,a) end,at,n,ids[n],a,at);
+ for r in select * from (values('start',a),('pause',b),('resume',c),('end',d)) v(action,t) where t is not null order by t loop
+ i:=i+1;
+ insert into public.work_session_events(user_id,command_id,session_id,work_item_id,revision_after,event_type,occurred_at,effective_at,device_id,command,after_state,result)
+ values('cccccccc-0000-4000-8000-000000000001',ids[i],s,w,i,r.action,r.t,r.t,'statistics-fixture','{}','{}','{}');
+ end loop;return s;
+end;$$;
+insert into auth.users(id,email) values('cccccccc-0000-4000-8000-000000000001','statistics-a@example.test'),('cccccccc-0000-4000-8000-000000000002','statistics-b@example.test');
+select ok(not has_function_privilege('anon','public.get_work_time_statistics(text,uuid,uuid,integer,date)','execute'),'anonymous statistics denied');
+select ok(not has_function_privilege('anon','public.ack_work_inactivity(uuid,timestamptz,text)','execute'),'anonymous inactivity write denied');
+select ok(not has_table_privilege('authenticated','public.work_session_activity','INSERT'),'activity direct insert denied');
+select ok(not has_table_privilege('authenticated','public.work_session_activity','UPDATE'),'activity direct update denied');
+select ok(not has_table_privilege('authenticated','public.work_item_activity','INSERT'),'count activity direct insert denied');
+set local role authenticated;
+set local request.jwt.claim.sub='cccccccc-0000-4000-8000-000000000001';
+select set_config('test.p',public.create_project(gen_random_uuid(),'통계 프로젝트',null)->>'id',true);
+select set_config('test.w',public.get_project_detail(current_setting('test.p')::uuid)->'parts'->0->>'workItemId',true);
+select set_config('test.other',public.apply_project_part_command(current_setting('test.p')::uuid,gen_random_uuid(),0,'{"type":"create","name":"소매"}')->>'workItemId',true);
+reset role;
+select pg_temp.seed_session(current_setting('test.w')::uuid,'cccccccc-1000-4000-8000-000000000001','2026-10-20T23:30Z','2026-10-21T00:15Z','2026-10-21T01:00Z','2026-10-21T01:30Z');
+select pg_temp.seed_session(current_setting('test.other')::uuid,'cccccccc-1000-4000-8000-000000000002','2026-10-21T02:00Z',null,null,'2026-10-21T03:00Z');
+set local role authenticated;
+select set_config('test.stats',public.get_work_time_statistics('UTC',current_setting('test.p')::uuid,null,0,'2026-10-21')::text,true);
+select is(jsonb_array_length(current_setting('test.stats')::jsonb->'works'),2,'independent part summaries');
+select is((select sum((x->>'savedMs')::bigint) from jsonb_array_elements(current_setting('test.stats')::jsonb->'works') x),8100000::numeric,'project total excludes paused interval');
+select is((select (x->>'todaySavedMs')::bigint from jsonb_array_elements(current_setting('test.stats')::jsonb->'works') x where x->>'workItemId'=current_setting('test.w')),2700000::bigint,'midnight split: 45 minutes today');
+select is(public.get_work_time_statistics('UTC',null,current_setting('test.w')::uuid,0,'2026-10-20')->'works'->0->>'todaySavedMs','1800000','previous date has 30 minutes');
+select is(jsonb_array_length(current_setting('test.stats')::jsonb->'recent'),2,'completed sessions shown once');
+select is(jsonb_array_length(public.get_work_time_statistics('UTC',null,current_setting('test.w')::uuid)->'works'),1,'work filter isolates part');
+select is(jsonb_array_length(public.get_work_time_statistics('UTC',null,null,20)->'recent'),0,'recent sessions paged');
+select throws_ok('select public.get_work_time_statistics(''invalid/zone'')','22023',null,'invalid timezone rejected');
+select set_config('test.other_part',(select id::text from public.project_parts where work_item_id=current_setting('test.other')::uuid),true);
+select is(public.apply_project_part_command(current_setting('test.p')::uuid,gen_random_uuid(),1,jsonb_build_object('type','delete','partId',current_setting('test.other_part')))->>'status','applied','measured part soft deleted');
+select is(public.get_work_time_statistics('UTC',null,current_setting('test.other')::uuid)->'works'->0->>'deleted','true','deleted part remains in owner statistics with label');
+select is(public.restore_project_part(current_setting('test.p')::uuid,current_setting('test.other_part')::uuid,gen_random_uuid(),2)->>'status','restored','measured part restored');
+select is(public.get_work_time_statistics('UTC',null,current_setting('test.other')::uuid)->'works'->0->>'savedMs','3600000','restored part total preserved without duplicates');
+select is(public.delete_project(current_setting('test.p')::uuid,3)->>'result','deleted','project soft deleted');
+select is((public.get_work_time_statistics('UTC',current_setting('test.p')::uuid)->'works'->0->>'deleted'),'true','history marked deleted');
+select is((select sum((x->>'savedMs')::bigint) from jsonb_array_elements(public.get_work_time_statistics('UTC',current_setting('test.p')::uuid)->'works') x),8100000::numeric,'deleted project times preserved');
+select is(public.restore_project(current_setting('test.p')::uuid,gen_random_uuid(),4)->>'status','restored','project restored');
+select is(public.get_work_time_statistics('UTC',current_setting('test.p')::uuid)->'works'->0->>'deleted','false','restored attribution preserved');
+reset role;
+select pg_temp.seed_session(current_setting('test.w')::uuid,'cccccccc-1000-4000-8000-000000000003',date_trunc('milliseconds',clock_timestamp())-interval '31 minutes',null,null,null);
+set local role authenticated;
+select set_config('test.inactive',public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')::text,true);
+select is(current_setting('test.inactive')::jsonb->>'shown','false','new interval not shown');
+select is(public.ack_work_inactivity('cccccccc-1000-4000-8000-000000000003',(current_setting('test.inactive')::jsonb->>'baseline')::timestamptz,'show')->>'status','applied','30 minute claim saved');
+select is(public.ack_work_inactivity('cccccccc-1000-4000-8000-000000000003',(current_setting('test.inactive')::jsonb->>'baseline')::timestamptz,'show')->>'status','skipped','duplicate tab/show skipped');
+select is(public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->'session'->>'status','running','prompt never auto pauses');
+select is(public.ack_work_inactivity('cccccccc-1000-4000-8000-000000000003',(current_setting('test.inactive')::jsonb->>'baseline')::timestamptz,'continue')->>'status','applied','explicit continue starts new interval');
+select isnt(public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',current_setting('test.inactive')::jsonb->>'baseline','continue anchor persisted');
+select is(public.ack_work_inactivity('cccccccc-1000-4000-8000-000000000003',(current_setting('test.inactive')::jsonb->>'baseline')::timestamptz,'continue')->>'status','stale','lost response retry does not extend interval again');
+select is((select x->'active'->>'status' from jsonb_array_elements(public.get_work_time_statistics()->'works') x where x->>'workItemId'=current_setting('test.w')),'running','running session separate in statistics');
+select set_config('test.continue_base',public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',true);
+select is(public.apply_counter_command(gen_random_uuid(),current_setting('test.w')::uuid,0,clock_timestamp(),'stats','{"type":"setTarget","counter":"stitch","value":10}')->>'status','applied','target update saved');
+select is(public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',current_setting('test.continue_base'),'target does not refresh activity');
+select is((select count(*) from public.work_item_activity),0::bigint,'target has no count confirmation marker');
+select set_config('test.base',public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',true);
+select is(public.apply_counter_command(gen_random_uuid(),current_setting('test.w')::uuid,1,clock_timestamp(),'stats','{"type":"change","counter":"stitch","delta":1}')->>'status','applied','actual count saved');
+select isnt(public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',current_setting('test.base'),'only count changes activity');
+select set_config('test.count_base',public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',true);
+select is(public.apply_counter_command(gen_random_uuid(),current_setting('test.w')::uuid,0,clock_timestamp(),'stats','{"type":"change","counter":"stitch","delta":1}')->>'status','conflict','counter revision conflict maintained');
+select is(public.get_work_inactivity('cccccccc-1000-4000-8000-000000000003')->>'baseline',current_setting('test.count_base'),'failed counter command never updates activity');
+select is((select revision from public.work_item_activity where work_item_id=current_setting('test.w')::uuid),2::bigint,'activity revision matches actual valid counter event');
+
+set local request.jwt.claim.sub='cccccccc-0000-4000-8000-000000000002';
+select is(jsonb_array_length(public.get_work_time_statistics()->'works'),0,'other user history hidden');
+select is((select count(*) from public.work_session_activity),0::bigint,'activity RLS ownership');
+select is((select count(*) from public.work_item_activity),0::bigint,'count activity owner RLS');
+select throws_ok(format('select public.get_work_time_statistics(''UTC'',%L)',current_setting('test.p')),'P0002',null,'foreign project filter denied');
+select throws_ok('select public.get_work_inactivity(''cccccccc-1000-4000-8000-000000000003'')','P0002',null,'foreign session activity denied');
+select throws_ok(format('select public.ack_work_inactivity(''cccccccc-1000-4000-8000-000000000003'',%L,''show'')',current_setting('test.base')),'P0002',null,'foreign acknowledgement denied');
+select * from finish();rollback;

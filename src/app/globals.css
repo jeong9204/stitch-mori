@@ -377,3 +377,20 @@ button { cursor: pointer; }
 .timer-pending { margin: 12px 0; padding: 12px; border-radius: 12px; background: #f9ebe9; font-size: .84rem; line-height: 1.6; overflow-wrap: anywhere; }
 .timer-error { color: var(--color-error); font-size: .86rem; line-height: 1.6; overflow-wrap: anywhere; }
 .timer-card a { color: var(--color-primary-contrast); font-weight: 700; }
+
+/* Phase 3C: session statistics and inactivity confirmation. */
+.time-statistics { min-width:0; margin:22px 0; padding:clamp(16px,4vw,24px); border:1px solid var(--color-line); border-radius:22px; background:var(--color-card); overflow-wrap:anywhere; }
+.time-statistics header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.time-statistics h2 { margin:4px 0; font-size:1.2rem; }
+.time-statistics button,.inactivity-actions button { min-height:44px; padding:10px 12px; border-radius:12px; border:1px solid #b38a96; color:var(--color-primary-contrast); background:#fffaf7; font:inherit; }
+.time-statistics button:disabled { opacity:.5; }
+.time-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:12px; }
+.time-summary p { margin:8px 0; padding:14px; background:var(--color-background); border-radius:14px; }
+.time-summary strong { display:block; margin-top:8px; font-size:1.15rem; }
+.time-work { padding:14px 0; border-top:1px solid var(--color-line); }
+.time-work h3 { font-size:1rem; }
+.time-history { padding-left:20px; }
+.time-history li { margin:14px 0; }
+.time-history span { display:block; margin:6px 0; font-size:.85rem; }
+.inactivity-actions { display:grid; gap:10px; }
+.inactivity-actions button:first-child { background:var(--color-primary-contrast); color:white; }

@@ -1,3 +1,4 @@
+import { TimeStatisticsPanel } from "@/components/time-statistics-panel";
 import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
@@ -8,9 +9,11 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let email: string | undefined;
+  let userId: string | undefined;
   if (hasSupabaseEnv()) {
     const supabase = await createClient();
     const { data } = await supabase.auth.getClaims();
+    userId = data?.claims?.sub;
     email = typeof data?.claims.email === "string" ? data.claims.email : undefined;
   }
 
@@ -38,6 +41,8 @@ export default async function HomePage() {
           {!email && <Link className="text-link" href="/login">이메일로 로그인하기 <span aria-hidden="true">→</span></Link>}
         </article>
       </section>
+      <TimeStatisticsPanel />
+      {userId && <TimeStatisticsPanel key={userId} userId={userId} />}
       <section className="account-panel" aria-label="계정 상태">
         {email ? (
           <><span>{email} 계정으로 로그인됨</span><Link className="text-link" href="/account">계정 카운터 이어하기</Link><Link className="text-link" href="/import">로컬 기록 가져오기</Link><SignOutButton /></>

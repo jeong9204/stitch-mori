@@ -1,5 +1,6 @@
 "use client";
 
+import { TimeStatisticsPanel } from "./time-statistics-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -90,6 +91,7 @@ export function ServerCounterPanel({ userId, workItemId, backHref = "/account", 
       timer={<TimerCard controller={accountTimer(client,userId,workItemId,view.confirmedRevision)} readOnlyReason={readOnlyReason} />}
       confirmedRevision={view.confirmedRevision} onAction={(action) => { void session.enqueue(action); }}
       footerText={view.pending.length ? "변경값은 미리보기입니다. 서버 확정 여부를 위에서 확인해 주세요." : "계정 서버에 저장되는 카운터입니다."} />}
+    <TimeStatisticsPanel key={`time:${userId}:${workItemId}`} userId={userId} workItemId={workItemId} />
     <dialog ref={recoveryDialogRef} className="quick-dialog" aria-labelledby="recovery-queue-title"
       onCancel={() => setReviewingRecovery(false)} onClose={() => { setReviewingRecovery(false); recoveryButtonRef.current?.focus(); }}>
       <h2 id="recovery-queue-title">보관된 명령을 다시 확인할까요?</h2><p>화면의 서버 확정값과 대기 명령을 확인한 뒤 진행해 주세요. 같은 명령 ID로 요청하며, revision이 다르면 적용하지 않습니다.</p>
