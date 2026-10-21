@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { TimerCard } from "@/components/timer-card";
+import { accountTimer, hideAccountTimers } from "@/data/timer/timer-runtime";
 import { CounterWorkspace } from "@/components/counter-workspace";
 import { IndexedDbServerCommandQueue } from "@/data/remote/server-command-queue";
 import { ServerCounterSession } from "@/data/remote/server-counter-session";
@@ -27,7 +29,7 @@ export function ServerCounterPanel({ userId, workItemId, backHref = "/account", 
     new SupabaseCounterStore(client), new IndexedDbServerCommandQueue(), async () => {
       const { data } = await client.auth.getClaims();
       return data?.claims?.sub === userId;
-    }));
+    },undefined,undefined,event=>accountTimer(client,userId,workItemId,event.before.revision).confirmed(event)));
   const view = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getServerSnapshot);
   const [authorized, setAuthorized] = useState(true);
   const [discarding, setDiscarding] = useState(false);
@@ -42,7 +44,7 @@ export function ServerCounterPanel({ userId, workItemId, backHref = "/account", 
     queueMicrotask(() => { void session.load(); });
     const { data } = client.auth.onAuthStateChange((event, authSession) => {
       if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && authSession?.user.id !== userId)) {
-        setAuthorized(false); session.dispose(); router.replace("/login"); router.refresh();
+        setAuthorized(false); session.dispose(); hideAccountTimers(userId); router.replace("/login"); router.refresh();
       }
     });
     return () => data.subscription.unsubscribe();
@@ -85,6 +87,7 @@ export function ServerCounterPanel({ userId, workItemId, backHref = "/account", 
     {localError && <p className="quick-error" role="alert">{localError}</p>}
     {conversionHref && <p className="quick-convert-link">{view.status === "saved" && view.pending.length === 0 ? <Link className="button button-secondary" href={conversionHref}>프로젝트로 전환</Link> : <span>프로젝트로 전환하려면 먼저 저장·대기 명령을 확인해 주세요.</span>}</p>}
     {view.display && <CounterWorkspace state={view.display} events={view.events} canEdit={canEdit}
+      timer={<TimerCard controller={accountTimer(client,userId,workItemId,view.confirmedRevision)} readOnlyReason={readOnlyReason} />}
       confirmedRevision={view.confirmedRevision} onAction={(action) => { void session.enqueue(action); }}
       footerText={view.pending.length ? "변경값은 미리보기입니다. 서버 확정 여부를 위에서 확인해 주세요." : "계정 서버에 저장되는 카운터입니다."} />}
     <dialog ref={recoveryDialogRef} className="quick-dialog" aria-labelledby="recovery-queue-title"

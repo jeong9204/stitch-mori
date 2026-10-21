@@ -39,6 +39,7 @@ export class ServerCounterSession {
     private readonly sameUser: () => Promise<boolean>,
     private readonly createId: () => string = () => crypto.randomUUID(),
     private readonly now: () => string = () => new Date().toISOString(),
+    private readonly onConfirmed?: (event: CounterEvent) => void | Promise<void>,
   ) {}
 
   getSnapshot = (): ServerCounterView => this.view;
@@ -227,6 +228,8 @@ export class ServerCounterSession {
           events = [...events, { ...applied.event, after: result.state, eventId: result.eventId }];
           this.confirmedEvents = events;
         }
+        const confirmedEvent=events.find(event=>event.commandId===item.command.commandId);
+        if(confirmedEvent && this.onConfirmed) { try { void Promise.resolve(this.onConfirmed(confirmedEvent)).catch(()=>undefined); } catch { /* Timer failure cannot roll back confirmed counter storage. */ } }
         const preview = confirmed ? this.preview(confirmed, events, remaining) : null;
         this.publish({ ...this.view, confirmed, display: preview?.state ?? confirmed,
           events: preview?.events ?? events, confirmedRevision: confirmed?.revision ?? 0, pending: remaining,

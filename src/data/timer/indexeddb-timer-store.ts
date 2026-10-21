@@ -96,5 +96,28 @@ export class IndexedDbTimerStore {
       store.delete(userId);
     });
   }
+  async readUi<T>(key: string): Promise<T | null> {
+    return this.transaction(["meta"],"readonly",async tx => (await result(tx.objectStore("meta").get(`ui:${key}`)))?.value ?? null);
+  }
+  async writeUi<T>(key: string, value: T): Promise<void> {
+    await this.transaction(["meta"],"readwrite",async tx => { tx.objectStore("meta").put({ key: `ui:${key}`, value }); });
+  }
+  async retainLocal(command: TimerCommand): Promise<void> {
+    await this.transaction(["meta"],"readwrite",async tx => {
+      const store=tx.objectStore("meta"), old=await result(store.get("local_pending")) as { value: TimerCommand } | undefined;
+      if (old && !sameTimerCommand(old.value,command)) throw new Error("pending_timer_command_requires_resolution");
+      store.put({ key: "local_pending", value: command });
+    });
+  }
+  async pendingLocal(): Promise<TimerCommand | null> {
+    return this.transaction(["meta"],"readonly",async tx => (await result(tx.objectStore("meta").get("local_pending")))?.value ?? null);
+  }
+  async releaseLocal(commandId: string): Promise<void> {
+    await this.transaction(["meta"],"readwrite",async tx => {
+      const store=tx.objectStore("meta"), old=await result(store.get("local_pending")) as { value: TimerCommand } | undefined;
+      if (old && old.value.commandId!==commandId) throw new Error("pending_timer_command_mismatch");
+      store.delete("local_pending");
+    });
+  }
   async close(): Promise<void> { if (this.dbPromise) (await this.dbPromise).close(); this.dbPromise = null; }
 }

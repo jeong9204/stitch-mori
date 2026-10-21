@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { quickCounterSession, quickCounterStore } from "@/data/local/quick-session";
+import { TimerCard } from "@/components/timer-card";
+import { localTimer } from "@/data/timer/timer-runtime";
 import { CounterWorkspace } from "@/components/counter-workspace";
 
 export default function QuickPage() {
@@ -47,6 +49,7 @@ export default function QuickPage() {
       {error && <div className="quick-error-box" role="alert"><strong>로컬 기록을 저장하지 못했어요.</strong><p>{error}</p>{status === "failed" && <p>저장 대기: {pendingCount}건</p>}<button type="button" onClick={() => { void session.retry(); }} disabled={status === "pending"}>다시 시도</button></div>}
       {record && <p className="quick-convert-link"><Link className="button button-secondary" href="/convert/quick">프로젝트로 전환</Link></p>}
       {record && <CounterWorkspace state={record.state} events={events} canEdit={canEdit}
+        timer={<TimerCard controller={localTimer(record.localWorkItemId,record.state.revision-pendingCount)} />}
         onAction={(action) => { session.enqueue(action); }}
         footerText={record.importStatus === "imported" ? "가져온 이후의 입력은 이 기기에만 저장돼요." : "기록은 이 브라우저에만 보관됩니다."} />}
     </div>

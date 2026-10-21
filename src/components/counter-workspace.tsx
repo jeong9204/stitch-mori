@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { lastUndoableEvent } from "@/domain/counter/engine";
 import type { CounterAction, CounterEvent, CounterState, CounterType } from "@/domain/counter/types";
 import { isNonNegativeInteger } from "@/domain/counter/invariants";
@@ -64,13 +64,14 @@ function EditForms({
   );
 }
 
-export function CounterWorkspace({ state, events, canEdit, onAction, footerText, confirmedRevision }: {
+export function CounterWorkspace({ state, events, canEdit, onAction, footerText, confirmedRevision, timer }: {
   state: CounterState;
   events: CounterEvent[];
   canEdit: boolean;
   onAction: (action: CounterAction) => void;
   footerText: string;
   confirmedRevision?: number;
+  timer?: ReactNode;
 }) {
   const [selected, setSelected] = useState<CounterType>("stitch");
   const [rowPrompt, setRowPrompt] = useState(false);
@@ -122,6 +123,7 @@ export function CounterWorkspace({ state, events, canEdit, onAction, footerText,
           </div>
         </section>
         <div className="quick-utility"><span>{footerText}</span><button type="button" disabled={!canEdit || !undoTarget} onClick={() => undoTarget && onAction({ type: "undo", eventId: undoTarget.eventId })}>직전 변경 실행 취소</button></div>
+        {timer}
         <section className="quick-history" aria-label="최근 변경 기록">
           <h2>최근 변경 기록</h2>
           {events.length === 0 ? <p className="quick-empty">아직 변경 기록이 없습니다.</p> : <ol reversed>{events.slice(-10).reverse().map((event) => <li key={event.eventId}><div className="quick-history-head"><strong>{eventLabel(event)}{confirmedRevision !== undefined && event.after.revision > confirmedRevision && <small className="server-unconfirmed"> · 서버 확인 대기</small>}</strong><time dateTime={event.occurredAt}>{dateTime(event.occurredAt)}</time></div><span>코수 {event.before.stitch.current} → {event.after.stitch.current} · 단수 {event.before.row.current} → {event.after.row.current}</span>{event.action.type === "setTarget" && <span>목표 {name[event.action.counter]} {event.before[event.action.counter].target ?? "없음"} → {event.after[event.action.counter].target ?? "없음"}</span>}</li>)}</ol>}

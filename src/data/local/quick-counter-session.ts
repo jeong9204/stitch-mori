@@ -26,6 +26,7 @@ export class QuickCounterSession {
     private readonly store: LocalCounterStore,
     private readonly createId: () => string = () => crypto.randomUUID(),
     private readonly now: () => string = () => new Date().toISOString(),
+    private readonly onConfirmed?: (event: CounterEvent) => void | Promise<void>,
   ) {}
 
   getSnapshot = (): QuickCounterView => this.view;
@@ -120,6 +121,8 @@ export class QuickCounterSession {
         }
         if (result.status === "rejected") throw new Error(result.reason);
         this.queue.shift();
+        const event=this.view.events.find(event=>event.commandId===command.commandId);
+        if(event && this.onConfirmed) { try { void Promise.resolve(this.onConfirmed(event)).catch(()=>undefined); } catch { /* Counter storage remains confirmed. */ } }
         this.publish({ ...this.view, pendingCount: this.queue.length, status: this.queue.length ? "pending" : "saved", error: "" });
       } catch (error) {
         this.publish({
