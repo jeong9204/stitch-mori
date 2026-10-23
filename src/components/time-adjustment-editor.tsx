@@ -1,4 +1,5 @@
 "use client";
+import {observeTimerImportBlocker} from "@/data/timer/timer-import-guard";
 import {useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import type {AdjustmentStore} from '@/data/timer/adjustment-store';
 import {AdjustmentSession} from '@/data/timer/adjustment-session';
@@ -9,6 +10,7 @@ export function TimeAdjustmentEditor({store,sessionId,onClose,onSaved}:{store:Ad
   const view=useSyncExternalStore(session.subscribe,session.getSnapshot,session.getServerSnapshot);
   const [hours,setHours]=useState('0'),[minutes,setMinutes]=useState('0'),[seconds,setSeconds]=useState('0'),[reason,setReason]=useState(''),[error,setError]=useState(''),[release,setRelease]=useState(false);
   const dialog=useRef<HTMLDialogElement>(null),cancel=useRef<HTMLButtonElement>(null),initialized=useRef(false);
+  useEffect(()=>observeTimerImportBlocker(store.scope.startsWith("account:")?store.scope.slice(8):null,()=>!!session.getSnapshot().pending||session.getSnapshot().status==="saving"),[session,store]);
   useEffect(()=>{session.activate();void session.load();dialog.current?.showModal();cancel.current?.focus();return()=>session.dispose();},[session]);
   useEffect(()=>{
     if(!view.snapshot || initialized.current)return;initialized.current=true;
@@ -32,7 +34,7 @@ export function TimeAdjustmentEditor({store,sessionId,onClose,onSaved}:{store:Ad
     {view.snapshot && <>
       <p>원본 기록 <strong>{formatWorkTime(view.snapshot.session.accumulatedMs)}</strong> ({view.snapshot.session.accumulatedMs.toLocaleString()}ms)</p>
       <p>현재 유효 시간 <strong>{formatWorkTime(view.snapshot.effectiveMs)}</strong> · 정정 revision {view.snapshot.revision}</p>
-      {!view.snapshot.canAdjust && <p className="notice">종료된 세션만 정정할 수 있습니다. 일시정지 세션은 먼저 종료하고, 삭제된 프로젝트·파트는 복구해 주세요.</p>}
+      {!view.snapshot.canAdjust && <p className="notice">종료된 세션만 정정할 수 있습니다. 일시정지 세션은 먼저 종료하고, 삭제된 프로젝트·파트는 복구해 주세요. 계정에 가져온 로컬 세션은 계정 기록에서 정정해 주세요.</p>}
       <p className="timer-help">원본 세션·이벤트는 유지합니다. 일별 통계는 원래 작업 비중에 따른 <strong>추정 배분</strong>이며 실제 작업 구간을 다시 구성하지 않습니다. 원본이 0이면 종료일에 배정합니다.</p>
       <form onSubmit={e=>{e.preventDefault();void run();}}>
         <fieldset disabled={locked}><legend>정정할 작업 시간</legend><div className="adjustment-duration">
@@ -44,7 +46,7 @@ export function TimeAdjustmentEditor({store,sessionId,onClose,onSaved}:{store:Ad
         <button className="button" type="submit" disabled={locked}>정정 저장</button>
       </form>
       {view.status==='saved' && <p role="status">정정을 저장했고 통계 갱신을 요청했습니다.</p>}
-      <h3>정정 이력</h3>{view.snapshot.adjustments.length===0?<p>아직 정정 이력이 없습니다.</p>:<ol className="time-history">{view.snapshot.adjustments.map(a=><li key={a.adjustmentId}><strong>정정 {a.revision}: {formatWorkTime(a.previousAdjustedMs)} → {formatWorkTime(a.adjustedMs)}</strong><span>{new Date(a.createdAt).toLocaleString('ko-KR')}</span><span>{a.reason||'사유 미입력'}</span><span>수행: {a.userId?'본인 계정':'이 기기'} · 요청 {a.commandId}</span></li>)}</ol>}
+      <h3>정정 이력</h3>{view.snapshot.adjustments.length===0?<p>아직 정정 이력이 없습니다.</p>:<ol className="time-history">{view.snapshot.adjustments.map(a=><li key={a.adjustmentId}><strong>정정 {a.revision}: {formatWorkTime(a.previousAdjustedMs)} → {formatWorkTime(a.adjustedMs)}</strong><span>{new Date(a.createdAt).toLocaleString('ko-KR')}</span><span>{a.reason||'사유 미입력'}</span><span>수행: {a.sourceLocalAdjustmentId?'가져온 로컬 기록':a.userId?'본인 계정':'이 기기'} · 요청 {a.commandId}</span></li>)}</ol>}
     </>}
     {(view.error||error) && <p className="timer-error" role="alert">{error||view.error}</p>}
     {view.pending && <div className="timer-pending"><p>미확정 정정 요청을 {view.durable?'이 기기에 보관했습니다.':'메모리에 유지하고 있습니다. 로컬 보관도 확인되지 않아 페이지를 떠나면 유실될 수 있습니다. 닫기 전에 같은 요청으로 재시도해 주세요.'} 원본 기록은 유지됩니다.</p><p>요청 ID {view.pending.requestId}</p><button type="button" disabled={busy} onClick={()=>void run(true)}>같은 요청으로 재시도</button><button type="button" disabled={busy} onClick={()=>setRelease(true)}>최신 이력 확인 후 새로 작성</button></div>}

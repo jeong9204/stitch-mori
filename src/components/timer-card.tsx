@@ -1,4 +1,5 @@
 "use client";
+import {observeTimerImportBlocker} from "@/data/timer/timer-import-guard";
 import Link from "next/link";
 import { InactivityPrompt } from "./inactivity-prompt";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -10,6 +11,7 @@ export function TimerCard({controller,readOnlyReason}: {controller:TimerControll
   const [modal,setModal]=useState<"end"|"release"|null>(null);
   const heading=useRef<HTMLHeadingElement>(null);
   const dialog=useRef<HTMLDialogElement>(null), cancel=useRef<HTMLButtonElement>(null), trigger=useRef<HTMLButtonElement|null>(null);
+  useEffect(()=>observeTimerImportBlocker(controller.backend.server?controller.backend.scope.split(":")[1]:null,()=>!!controller.getSnapshot().pending||controller.getSnapshot().status==="saving"),[controller]);
   useEffect(()=>{
     void Promise.resolve().then(()=>controller.load());
     const refresh=()=>{void controller.load();};

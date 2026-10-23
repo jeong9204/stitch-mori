@@ -57,7 +57,9 @@ export function ImportCounterPanel({ userId, email }: { userId: string; email: s
         router.refresh();
       }
     });
-    return () => { active = false; data.subscription.unsubscribe(); };
+    const linked=()=>{if(active)void refresh().then(()=>{if(active)setStatus("ready");}).catch(()=>{});};
+    window.addEventListener("stitchmori-counter-imported",linked);
+    return () => { active = false; data.subscription.unsubscribe(); window.removeEventListener("stitchmori-counter-imported",linked); };
   }, [client, refresh, router, userId]);
 
   async function importNow() {

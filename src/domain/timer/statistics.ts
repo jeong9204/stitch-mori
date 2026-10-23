@@ -2,7 +2,7 @@ import { effectiveWorkTime,allocateAdjustedDay,type TimeAdjustment } from './adj
 import { elapsedMilliseconds } from './engine';
 import type { TimerEvent, WorkSession } from './types';
 export type WorkTimeSummary = {workItemId:string; name:string; projectId:string|null; partId:string|null; deleted:boolean; savedMs:number; liveMs:number; todaySavedMs:number; todayLiveMs:number; lastWorkedAt:string|null; active:WorkSession|null;adjustedSessions?:number};
-export type TimeStatistics = {zone:string; day:string; serverNow:string; works:WorkTimeSummary[]; recent:(WorkSession & {effectiveMs?:number;adjustmentRevision?:number})[]; hasMore:boolean};
+export type TimeStatistics = {zone:string; day:string; serverNow:string; works:WorkTimeSummary[]; recent:(WorkSession & {effectiveMs?:number;adjustmentRevision?:number;sourceLocalSessionId?:string})[]; hasMore:boolean};
 const formatters=new Map<string,Intl.DateTimeFormat>();
 export function dayKey(at:number,zone:string):string {
   if(!formatters.has(zone))formatters.set(zone,new Intl.DateTimeFormat('en-US',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}));

@@ -1,5 +1,5 @@
 import type {SessionTimeAdjustment,WorkSession} from './types';
-export type TimeAdjustment=SessionTimeAdjustment & {userId:string|null;revision:number};
+export type TimeAdjustment=SessionTimeAdjustment & {userId:string|null;revision:number;sourceLocalAdjustmentId?:string|null};
 export type AdjustmentCommand={requestId:string;sessionId:string;expectedRevision:number;adjustedMs:number;reason:string};
 export type AdjustmentSnapshot={session:WorkSession;adjustments:TimeAdjustment[];effectiveMs:number;revision:number;canAdjust:boolean};
 export type AdjustmentResult={status:'applied'|'duplicate';adjustment:TimeAdjustment}|{status:'conflict';revision:number}|{status:'rejected';reason:string};

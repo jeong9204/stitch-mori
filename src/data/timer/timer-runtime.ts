@@ -23,3 +23,10 @@ export function hideAccountTimers(userId: string) {
   accountSubscriptions.get(userId)?.();accountSubscriptions.delete(userId);
   for(const [key,controller] of timers)if(key.startsWith(`account:${userId}:`)){controller.dispose();timers.delete(key);}
 }
+
+/** Include commands retained only in memory after a failed IndexedDB write. */
+export function hasPendingTimerRuntime(userId:string){
+ for(const [key,controller] of timers)if(key.startsWith('local:')||key.startsWith(`account:${userId}:`)){
+  const view=controller.getSnapshot();if(view.pending||view.status==='saving')return true;
+ }return false;
+}
