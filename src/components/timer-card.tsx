@@ -32,7 +32,7 @@ export function TimerCard({controller,readOnlyReason}: {controller:TimerControll
   const locked=busy || !!view.pending || !!other;
   let elapsed=0,clockError="";
   try{elapsed=controller.elapsed();}catch{clockError="기기 시각을 확인해 주세요. 경과 시간을 안전하게 계산할 수 없습니다.";}
-  const minutes=Math.floor(elapsed/60000),time=`${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
+  const seconds=Math.floor(elapsed/1000),time=`${String(Math.floor(seconds/3600)).padStart(2,"0")}:${String(Math.floor(seconds/60)%60).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
   function changed(task:Promise<void>){void task.finally(()=>{const channel=new BroadcastChannel("stitchmori-timer-ui");channel.postMessage("changed");channel.close();});}
   return <section className="timer-card" aria-label="작업 타이머">
     <header className="timer-heading"><div><p className="eyebrow">한 코씩 쌓이는 시간</p><h2 ref={heading} tabIndex={-1}>작업 타이머</h2></div><span className="timer-location">{controller.backend.server?"계정 서버":"이 기기"}</span></header>
