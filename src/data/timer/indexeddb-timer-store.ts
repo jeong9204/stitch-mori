@@ -1,3 +1,4 @@
+import { applyTimeAdjustment,effectiveWorkTime,type AdjustmentCommand,type AdjustmentSnapshot,type AdjustmentResult,type TimeAdjustment } from "../../domain/timer/adjustments";
 import { applyTimerCommand, sameTimerCommand } from "../../domain/timer/engine";
 import type { TimerCommand, TimerEvent, TimerResult, WorkSession } from "../../domain/timer/types";
 
@@ -18,15 +19,22 @@ export class IndexedDbTimerStore {
   private database(): Promise<IDBDatabase> {
     if (!this.dbPromise) this.dbPromise = new Promise<IDBDatabase>((resolve,reject) => {
       if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB_unavailable")); return; }
-      const request = indexedDB.open(this.name,1);
+      const request = indexedDB.open(this.name,2);
       request.onupgradeneeded = () => {
         const db = request.result;
+        if(!db.objectStoreNames.contains("sessions")) {
         const sessions = db.createObjectStore("sessions", { keyPath: "sessionId" });
         sessions.createIndex("workItemId","workItemId");
         const events = db.createObjectStore("events", { keyPath: "eventId" });
         events.createIndex("sessionId","command.sessionId");
         db.createObjectStore("meta", { keyPath: "key" });
         db.createObjectStore("server_pending", { keyPath: "userId" });
+        }
+        if(!db.objectStoreNames.contains("adjustments")) {
+          const adjustments=db.createObjectStore("adjustments",{keyPath:"adjustmentId"});
+          adjustments.createIndex("sessionId","sessionId");adjustments.createIndex("commandId","commandId",{unique:true});
+        }
+        if(!db.objectStoreNames.contains("adjustment_pending"))db.createObjectStore("adjustment_pending",{keyPath:"key"});
       };
       request.onsuccess = () => { request.result.onversionchange = () => request.result.close(); resolve(request.result); };
       request.onerror = () => reject(request.error);
@@ -120,8 +128,9 @@ export class IndexedDbTimerStore {
     });
   }
   async localStatisticsSource() {
-    return this.transaction(["sessions","events","meta"],"readonly",async tx=>({
+    return this.transaction(["sessions","events","meta","adjustments"],"readonly",async tx=>({
       states:await result(tx.objectStore("sessions").getAll()) as WorkSession[],
+      adjustments:await result(tx.objectStore("adjustments").getAll()) as TimeAdjustment[],
       events:await result(tx.objectStore("events").getAll()) as TimerEvent[],
       pending:(await result(tx.objectStore("meta").get("local_pending")))?.value as TimerCommand | undefined,
     }));
@@ -130,6 +139,49 @@ export class IndexedDbTimerStore {
     return this.transaction(["meta"],"readwrite",async tx=>{
       const store=tx.objectStore("meta"),current=(await result(store.get(`ui:${key}`)))?.value ?? null;
       const value=update(current);store.put({key:`ui:${key}`,value});return value;
+    });
+  }
+  async adjustmentSnapshot(sessionId:string):Promise<AdjustmentSnapshot> {
+    return this.transaction(["sessions","adjustments"],"readonly",async tx=>{
+      const session=await result(tx.objectStore("sessions").get(sessionId)) as WorkSession|undefined;
+      if(!session)throw new Error("작업 세션을 찾을 수 없습니다.");
+      const adjustments=(await result(tx.objectStore("adjustments").index("sessionId").getAll(sessionId)) as TimeAdjustment[]).sort((a,b)=>a.revision-b.revision);
+      return {session,adjustments,effectiveMs:effectiveWorkTime(session,adjustments),revision:adjustments.length,canAdjust:session.status==="ended"};
+    });
+  }
+  async allPendingAdjustments(scope:string):Promise<AdjustmentCommand[]> {
+    return this.transaction(["adjustment_pending"],"readonly",async tx=>{
+      const rows=await result(tx.objectStore("adjustment_pending").getAll()) as {key:string;command:AdjustmentCommand}[];
+      return rows.filter(row=>row.key.startsWith(`${scope}:`)).map(row=>row.command);
+    });
+  }
+  async pendingAdjustment(scope:string,sessionId:string):Promise<AdjustmentCommand|null> {
+    return this.transaction(["adjustment_pending"],"readonly",async tx=>(await result(tx.objectStore("adjustment_pending").get(`${scope}:${sessionId}`)))?.command??null);
+  }
+  async retainAdjustment(scope:string,command:AdjustmentCommand):Promise<void> {
+    await this.transaction(["adjustment_pending"],"readwrite",async tx=>{
+      const store=tx.objectStore("adjustment_pending"),key=`${scope}:${command.sessionId}`,old=await result(store.get(key));
+      if(old && JSON.stringify(old.command)!==JSON.stringify(command))throw new Error("보관된 정정 요청을 먼저 확인해 주세요.");
+      store.put({key,command:structuredClone(command)});
+    });
+  }
+  async releaseAdjustment(scope:string,sessionId:string,requestId:string):Promise<void> {
+    await this.transaction(["adjustment_pending"],"readwrite",async tx=>{
+      const store=tx.objectStore("adjustment_pending"),key=`${scope}:${sessionId}`,old=await result(store.get(key));
+      if(old && old.command.requestId!==requestId)throw new Error("정정 요청 ID가 일치하지 않습니다.");store.delete(key);
+    });
+  }
+  async applyLocalAdjustment(command:AdjustmentCommand,at=new Date().toISOString()):Promise<AdjustmentResult> {
+    return this.transaction(["sessions","adjustments","adjustment_pending"],"readwrite",async tx=>{
+      const session=await result(tx.objectStore("sessions").get(command.sessionId)) as WorkSession|undefined;
+      if(!session)return {status:"rejected",reason:"session_not_found"};
+      const adjustments=tx.objectStore("adjustments"),history=await result(adjustments.getAll()) as TimeAdjustment[];
+      const applied=applyTimeAdjustment(session,history,command,at);
+      if(applied.status==="applied" || applied.status==="duplicate") {
+        if(applied.status==="applied")adjustments.add(applied.adjustment);
+        const store=tx.objectStore("adjustment_pending"),key=`local:${command.sessionId}`,old=await result(store.get(key));
+        if(old && old.command.requestId!==command.requestId)throw new Error("보관된 정정 요청이 다릅니다.");store.delete(key);
+      }return applied;
     });
   }
   async close(): Promise<void> { if (this.dbPromise) (await this.dbPromise).close(); this.dbPromise = null; }

@@ -100,8 +100,8 @@ select throws_ok(format('update public.work_sessions set accumulated_ms=-1 where
 select throws_ok(format('update public.work_sessions set last_resumed_at=started_at where id=%L',current_setting('test.ts')),'23514',null,'ended session cannot have a running segment');
 select throws_ok(format('update public.work_session_events set device_id=''tampered'' where session_id=%L',current_setting('test.ts')),'23514',null,'events append only');
 select throws_ok(format('delete from public.work_session_events where session_id=%L',current_setting('test.ts')),'23514',null,'events cannot be deleted');
-insert into public.work_session_time_adjustments(id,user_id,session_id,command_id,previous_adjusted_ms,adjusted_ms,reason)
-  values('eeeeeeee-3000-4000-8000-000000000001','eeeeeeee-0000-4000-8000-000000000001',current_setting('test.ts')::uuid,gen_random_uuid(),0,100,'테스트 전용 향후 정정 이력 구조');
+insert into public.work_session_time_adjustments(id,user_id,session_id,command_id,previous_adjusted_ms,adjusted_ms,reason,adjustment_revision)
+  values('eeeeeeee-3000-4000-8000-000000000001','eeeeeeee-0000-4000-8000-000000000001',current_setting('test.ts')::uuid,gen_random_uuid(),0,100,'테스트 전용 향후 정정 이력 구조',1);
 select throws_ok('update public.work_session_time_adjustments set adjusted_ms=200','23514',null,'future adjustments append only');
 select throws_ok('delete from public.work_session_time_adjustments','23514',null,'future adjustment history cannot be deleted');
 select is((select accumulated_ms::text from public.work_sessions where id=current_setting('test.ts')::uuid),current_setting('test.tsnapshot')::jsonb->>'accumulatedMs','adjustments do not overwrite original measured time');
