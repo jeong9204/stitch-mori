@@ -1,4 +1,5 @@
 import "fake-indexeddb/auto";
+import { timerDisplay } from "../../src/components/timer-display";
 import { describe,it,expect,vi } from "vitest";
 import { accountTimer } from "../../src/data/timer/timer-runtime";
 import { TimerController,isCountChange } from "../../src/data/timer/timer-controller";
@@ -41,6 +42,30 @@ class Backend implements TimerUiBackend {
 }
 async function setup(auto=false){const backend=new Backend(),controller=new TimerController(backend,0,()=>at);await controller.load();if(auto)await controller.setMode("auto");return {backend,controller};}
 describe("timer UI coordinator",()=>{
+  it("keeps the displayed time through failed/lost end acknowledgements and resets only after retry confirms",async()=>{
+    let now=at;
+    const backend=new Backend(),controller=new TimerController(backend,0,()=>now);
+    const display=()=>{const v=controller.getSnapshot();return timerDisplay(v.context?.state,v.pending,controller.elapsed());};
+    await controller.load();await controller.action("start");
+    now="2026-10-20T14:00:10.000Z";await controller.action("pause");
+    expect(display().time).toBe("00:00:10");
+    now="2026-10-20T14:00:20.000Z";await controller.action("resume");
+    now="2026-10-20T14:00:30.000Z";backend.network=true;await controller.action("end");
+    expect(controller.getSnapshot().status).toBe("failed");expect(display().time).toBe("00:00:20");
+    const request=controller.getSnapshot().pending!.commandId;
+    backend.network=false;backend.lostAck=true;await controller.retry();
+    expect(display().lastSessionTime).toBeNull();
+    await controller.load();expect(controller.getSnapshot().context?.state?.status).toBe("ended");
+    expect(display()).toEqual({time:"00:00:20",lastSessionTime:null});
+    await controller.retry();expect(backend.calls.at(-1)?.commandId).toBe(request);
+    expect(display()).toEqual({time:"00:00:00",lastSessionTime:"00:00:20"});
+    expect(backend.context.state?.accumulatedMs).toBe(20000);
+    expect(backend.events).toHaveLength(4);
+    await controller.load();expect(display().time).toBe("00:00:00");
+    now="2026-10-20T14:01:00.000Z";await controller.action("start");
+    expect(display()).toEqual({time:"00:00:00",lastSessionTime:null});
+  });
+
   it("defaults to manual, serializes duplicate clicks, pauses/resumes/ends, then starts a new session",async()=>{
     const {backend,controller}=await setup();expect(controller.getSnapshot().context?.mode).toBe("manual");
     await Promise.all([controller.action("start"),controller.action("start"),controller.action("start")]);

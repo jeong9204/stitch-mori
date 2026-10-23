@@ -405,3 +405,69 @@ button { cursor: pointer; }
 
 /* Keep the independent timer import panel aligned with the counter import flow. */
 .timer-import-panel { max-width:760px; margin:0 auto 60px; overflow-wrap:anywhere; }
+
+/* Counter refinement: primary controls first; advanced settings stay mounted. */
+.quick-counter { padding: 18px 18px 16px; background: linear-gradient(160deg, #fffdf9, #fff8f3); }
+.quick-dial { display: grid; justify-items: center; align-content: center; width: 100%; min-height: 208px; margin: 0 auto 14px; background: radial-gradient(ellipse 130px 120px at center, #fce8e5 0%, #fdf1ea 78%, transparent 79%); }
+.quick-number { font-size: clamp(4.5rem, 21vw, 7rem); letter-spacing: -.055em; line-height: 1.05; }
+.quick-stitch-line { width: 145px; height: 8px; margin: 0 auto 12px; }
+.quick-stitch-line span { width: 23px; height: 23px; font-size: .9rem; bottom: -11px; }
+.quick-target { margin: 0; }
+.quick-other-count { margin: 0 auto 6px; padding: 3px 11px; }
+.quick-last-change { padding: 11px 13px; gap: 6px; background: #fbece7; }
+.quick-last-change p { font-size: .8rem; }
+.quick-last-change time { font-weight: 600; }
+.quick-actions { margin-top: 10px; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); }
+.quick-actions button { min-height: 68px; }
+.quick-utility { display: grid; grid-template-columns: minmax(0,1fr); justify-content: stretch; gap: 7px; margin-top: 8px; padding: 0; text-align: center; }
+.quick-utility button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 46px; border: 0; border-radius: 13px; background: #f3e9df; color: var(--color-text); }
+.quick-utility button span:first-child { font-size: 1.4rem; }
+.quick-utility small { font-size: .75rem; line-height: 1.5; }
+.quick-history, .quick-edit { padding: 16px 18px; box-shadow: none; }
+.quick-history-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.quick-history-title h2 { margin: 0; font-size: 1rem; }
+.quick-history-title h2 small { font-size: .75rem; color: var(--color-text-secondary); font-weight: 400; }
+.quick-history-title button { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: var(--color-primary-contrast); font: inherit; font-size: .82rem; font-weight: 700; }
+.quick-empty { padding-top: 12px; font-size: .85rem; }
+.quick-history li { padding: 10px 0; font-size: .8rem; }
+.quick-history-head time { font-size: .75rem; }
+.quick-edit summary, .timer-settings summary { min-height: 44px; cursor: pointer; font-size: .88rem; font-weight: 700; line-height: 1.6; padding: 10px 0; }
+.quick-edit summary span, .timer-settings summary span { margin-left: 8px; color: var(--color-text-secondary); font-size: .78rem; font-weight: 400; }
+.quick-edit-content { margin-top: 12px; }
+.quick-edit input { width: 0; font-size: 16px; }
+.quick-edit-row { flex-wrap: nowrap; }
+.quick-edit-row button { width: auto; flex: none; font-size: .8rem; padding-inline: 10px; }
+.quick-convert-link { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+.timer-card { margin: 14px 0; padding: 16px 18px 6px; background: linear-gradient(135deg, #f8f9f0, #fffaf4); box-shadow: none; border-color: #e2e5d6; }
+.timer-heading h2 { font-size: .95rem; margin: 0; }
+.timer-state { font-size: .75rem; padding: 3px 9px; border-radius: 99px; background: var(--color-soft-sage); color: #354a32; }
+.timer-work { margin: 5px 0 8px; font-size: .76rem; }
+.timer-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.timer-clock { min-width: 0; }
+.timer-clock output { font-size: clamp(1.7rem, 7.6vw, 2.7rem); line-height: 1.2; letter-spacing: -.045em; white-space: nowrap; }
+.timer-primary-controls { display: flex; gap: 7px; flex: none; }
+.timer-round { display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 1px solid #e3d9ca; border-radius: 50%; background: #f1e9df; color: var(--color-text); cursor: pointer; }
+.timer-round-primary { background: #6a7c5c; border-color: #6a7c5c; color: white; }
+.timer-round:disabled { opacity: .48; cursor: not-allowed; }
+.timer-save-line { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; column-gap: 8px; margin-top: 5px; }
+.timer-storage { margin: 0; font-size: .74rem; }
+.timer-refresh { min-height: 44px; border: 0; padding: 7px 0; background: transparent; color: var(--color-primary-contrast); font: inherit; font-size: .74rem; text-decoration: underline; text-underline-offset: 3px; }
+.timer-controls:empty { display: none; }
+.timer-controls button:first-child { background: #fffaf7; color: var(--color-primary-contrast); }
+.timer-settings { margin-top: 3px; border-top: 1px solid #e2e5d6; }
+.timer-settings .timer-mode { margin-top: 10px; }
+.timer-settings select { font-size: 16px; }
+.timer-help { margin: 5px 0 10px; font-size: .76rem; }
+.timer-pending { border: 1px solid #d4a0ac; }
+.timer-error { padding: 10px; background: #fff0ed; border-left: 3px solid var(--color-error); border-radius: 8px; }
+@media (max-width: 340px) {
+  .quick-counter { padding: 14px 12px; }
+  .quick-dial { min-height: 185px; }
+  .timer-card { padding-inline: 12px; }
+  .timer-primary-controls { gap: 5px; }
+  .timer-round { width: 44px; height: 44px; }
+}
+@media (max-height: 700px) and (max-width: 640px) {
+  .quick-dial { min-height: 160px; margin-bottom: 10px; }
+  .quick-number { font-size: 4.4rem; }
+}

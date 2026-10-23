@@ -30,8 +30,10 @@ function EditForms({
   disabled: boolean;
   onAction: (action: CounterAction) => void;
 }) {
-  const [value, setValue] = useState(String(current));
-  const [goal, setGoal] = useState(target === null ? "" : String(target));
+  const [valueDraft, setValue] = useState<string | null>(null);
+  const value = valueDraft ?? String(current);
+  const [goalDraft, setGoal] = useState<string | null>(null);
+  const goal = goalDraft ?? (target === null ? "" : String(target));
   const [error, setError] = useState("");
 
   function saveValue(event: FormEvent) {
@@ -49,8 +51,9 @@ function EditForms({
     onAction({ type: "setTarget", counter, value: parsed });
   }
   return (
-    <section className="quick-edit" aria-label={`${name[counter]} 값과 목표 수정`}>
-      <h2>값과 목표 수정</h2>
+    <details className="quick-edit">
+      <summary>값·목표 수정 <span>{name[counter]} 설정</span></summary>
+      <div className="quick-edit-content" aria-label={`${name[counter]} 값과 목표 수정`}>
       <form onSubmit={saveValue}>
         <label htmlFor="quick-current">현재 {name[counter]}</label>
         <div className="quick-edit-row"><input id="quick-current" type="number" inputMode="numeric" min="0" step="1" value={value} onChange={(e) => setValue(e.target.value)} /><button type="submit" disabled={disabled}>현재 값 저장</button></div>
@@ -60,7 +63,8 @@ function EditForms({
         <div className="quick-edit-row"><input id="quick-target" type="number" inputMode="numeric" min="1" step="1" value={goal} onChange={(e) => setGoal(e.target.value)} /><button type="submit" disabled={disabled}>목표 저장</button></div>
       </form>
       {error && <p className="quick-error" role="alert">{error}</p>}
-    </section>
+      </div>
+    </details>
   );
 }
 
@@ -75,6 +79,7 @@ export function CounterWorkspace({ state, events, canEdit, onAction, footerText,
 }) {
   const [selected, setSelected] = useState<CounterType>("stitch");
   const [rowPrompt, setRowPrompt] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const rowButtonRef = useRef<HTMLButtonElement>(null);
   const resetButtonRef = useRef<HTMLButtonElement>(null);
@@ -102,11 +107,13 @@ export function CounterWorkspace({ state, events, canEdit, onAction, footerText,
           }}>{name[counter]}</button>)}
         </div>
         <section className="quick-counter" id="quick-counter-panel" role="tabpanel" aria-labelledby={`quick-tab-${selected}`}>
+          <div className="quick-dial">
           <p className="quick-counter-label">현재 {name[selected]}</p>
           <output className="quick-number" aria-label={`현재 ${name[selected]} ${value?.current ?? 0}`}>{value?.current ?? 0}</output>
           <div className="quick-stitch-line" aria-hidden="true"><span>✳</span></div>
           {selected === "row" && <p className="quick-other-count">현재 코수 <strong>{state.stitch.current}</strong></p>}
           <p className="quick-target">목표 {name[selected]} <strong>{value?.target === null ? "미설정" : value?.target}</strong></p>
+          </div>
           <div className="quick-last-change" aria-label={`마지막 ${name[selected]} 변경 정보`}>
             {lastChange ? <>
               <p><span aria-hidden="true">◷</span> 마지막 {name[selected]} 변경 <time dateTime={lastChange.occurredAt}>{dateTime(lastChange.occurredAt)}</time></p>
@@ -122,13 +129,13 @@ export function CounterWorkspace({ state, events, canEdit, onAction, footerText,
             )}
           </div>
         </section>
-        <div className="quick-utility"><span>{footerText}</span><button type="button" disabled={!canEdit || !undoTarget} onClick={() => undoTarget && onAction({ type: "undo", eventId: undoTarget.eventId })}>직전 변경 실행 취소</button></div>
+        <div className="quick-utility"><button type="button" disabled={!canEdit || !undoTarget} onClick={() => undoTarget && onAction({ type: "undo", eventId: undoTarget.eventId })}><span aria-hidden="true">↶</span> 직전 변경 실행 취소 <span aria-hidden="true">›</span></button><small>{footerText}</small></div>
         {timer}
         <section className="quick-history" aria-label="최근 변경 기록">
-          <h2>최근 변경 기록</h2>
-          {events.length === 0 ? <p className="quick-empty">아직 변경 기록이 없습니다.</p> : <ol reversed>{events.slice(-10).reverse().map((event) => <li key={event.eventId}><div className="quick-history-head"><strong>{eventLabel(event)}{confirmedRevision !== undefined && event.after.revision > confirmedRevision && <small className="server-unconfirmed"> · 서버 확인 대기</small>}</strong><time dateTime={event.occurredAt}>{dateTime(event.occurredAt)}</time></div><span>코수 {event.before.stitch.current} → {event.after.stitch.current} · 단수 {event.before.row.current} → {event.after.row.current}</span>{event.action.type === "setTarget" && <span>목표 {name[event.action.counter]} {event.before[event.action.counter].target ?? "없음"} → {event.after[event.action.counter].target ?? "없음"}</span>}</li>)}</ol>}
+          <div className="quick-history-title"><h2>최근 변경 기록 <small>{events.length}건</small></h2>{events.length > 3 && <button type="button" aria-expanded={historyExpanded} aria-controls="quick-history-list" onClick={() => setHistoryExpanded(!historyExpanded)}>{historyExpanded ? "접기" : "전체 보기"}</button>}</div>
+          {events.length === 0 ? <p className="quick-empty">아직 변경 기록이 없습니다.</p> : <ol id="quick-history-list" reversed start={events.length}>{(historyExpanded ? events.slice() : events.slice(-3)).reverse().map((event) => <li key={event.eventId}><div className="quick-history-head"><strong>{eventLabel(event)}{confirmedRevision !== undefined && event.after.revision > confirmedRevision && <small className="server-unconfirmed"> · 서버 확인 대기</small>}</strong><time dateTime={event.occurredAt}>{dateTime(event.occurredAt)}</time></div><span>코수 {event.before.stitch.current} → {event.after.stitch.current} · 단수 {event.before.row.current} → {event.after.row.current}</span>{event.action.type === "setTarget" && <span>목표 {name[event.action.counter]} {event.before[event.action.counter].target ?? "없음"} → {event.after[event.action.counter].target ?? "없음"}</span>}</li>)}</ol>}
         </section>
-        <EditForms key={`${selected}-${state.revision}`} counter={selected} current={value?.current ?? 0} target={value?.target ?? null} disabled={!canEdit} onAction={(action) => { onAction(action); }} />
+        <EditForms key={selected} counter={selected} current={value?.current ?? 0} target={value?.target ?? null} disabled={!canEdit} onAction={(action) => { onAction(action); }} />
       <dialog ref={dialogRef} className="quick-dialog" onClose={() => { setRowPrompt(false); rowButtonRef.current?.focus(); }} onCancel={() => setRowPrompt(false)} aria-labelledby="row-dialog-title" aria-describedby="row-dialog-description">
         <div className="quick-dialog-mark" aria-hidden="true">✳</div>
         <h2 id="row-dialog-title">한 단을 완료했나요?</h2>

@@ -86,11 +86,11 @@ export function ServerCounterPanel({ userId, workItemId, backHref = "/account", 
     {view.status === "conflict" && <p className="notice">대기 명령을 새 revision에 자동 적용하지 않습니다. 아래 목록과 서버 확정값을 확인해 주세요.</p>}
     {view.pending.length > 0 && <section className="server-pending" aria-label="미확정 명령"><h2>이 기기에 보관된 대기 명령 · {view.pending.length}건</h2><ol>{view.pending.map((item) => <li key={item.id}>{actionText(item.command.action)} · 요청 revision {item.command.expectedRevision} · {new Date(item.command.occurredAt).toLocaleString("ko-KR")}</li>)}</ol></section>}
     {localError && <p className="quick-error" role="alert">{localError}</p>}
-    {conversionHref && <p className="quick-convert-link">{view.status === "saved" && view.pending.length === 0 ? <Link className="button button-secondary" href={conversionHref}>프로젝트로 전환</Link> : <span>프로젝트로 전환하려면 먼저 저장·대기 명령을 확인해 주세요.</span>}</p>}
     {view.display && <CounterWorkspace state={view.display} events={view.events} canEdit={canEdit}
       timer={<TimerCard controller={accountTimer(client,userId,workItemId,view.confirmedRevision)} readOnlyReason={readOnlyReason} />}
       confirmedRevision={view.confirmedRevision} onAction={(action) => { void session.enqueue(action); }}
       footerText={view.pending.length ? "변경값은 미리보기입니다. 서버 확정 여부를 위에서 확인해 주세요." : "계정 서버에 저장되는 카운터입니다."} />}
+    {conversionHref && <p className="quick-convert-link">{view.status === "saved" && view.pending.length === 0 ? <Link className="button button-secondary" href={conversionHref}>프로젝트로 전환</Link> : <span>프로젝트로 전환하려면 먼저 저장·대기 명령을 확인해 주세요.</span>}</p>}
     <TimeStatisticsPanel key={`time:${userId}:${workItemId}`} userId={userId} workItemId={workItemId} />
     <dialog ref={recoveryDialogRef} className="quick-dialog" aria-labelledby="recovery-queue-title"
       onCancel={() => setReviewingRecovery(false)} onClose={() => { setReviewingRecovery(false); recoveryButtonRef.current?.focus(); }}>
