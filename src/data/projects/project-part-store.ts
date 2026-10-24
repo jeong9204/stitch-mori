@@ -1,13 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProjectStatus } from "./project-store";
 
+import { isPartStatus, isProjectProgress, type PartStatus, type ProjectProgress } from "../../domain/project/tracking";
+
 export type ProjectPart = {
   id: string; name: string; position: number; isDefault: boolean; workItemId: string;
+  status: PartStatus;
   workItemRevision: number; stitch: number; row: number;
   lastCountAt: string | null; lastEventCreatedAt: string | null;
 };
 export type ProjectDetail = {
   id: string; name: string; notes: string | null; status: ProjectStatus;
+  progressPercent: ProjectProgress;
   revision: number; updatedAt: string; parts: ProjectPart[];
 };
 export type PartAction =
@@ -32,7 +36,14 @@ function mapDetail(value: unknown): ProjectDetail | null {
   if (!value || typeof value !== "object") throw new Error("프로젝트 상세 응답이 올바르지 않습니다.");
   const candidate = value as Record<string, unknown>;
   if (typeof candidate.id !== "string" || !Array.isArray(candidate.parts)) throw new Error("프로젝트 상세 응답이 올바르지 않습니다.");
-  return candidate as ProjectDetail;
+  const progressPercent = candidate.progressPercent === undefined ? null : candidate.progressPercent;
+  if (!isProjectProgress(progressPercent)) throw new Error("프로젝트 진행률 응답이 올바르지 않습니다.");
+  const parts = candidate.parts.map((part: ProjectPart) => {
+    const status = part.status === undefined ? "not_started" : part.status;
+    if (!isPartStatus(status)) throw new Error("파트 상태 응답이 올바르지 않습니다.");
+    return { ...part, status };
+  });
+  return { ...candidate, progressPercent, parts } as ProjectDetail;
 }
 export class ProjectPartStore {
   constructor(private readonly client: SupabaseClient) {}

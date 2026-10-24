@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { ProjectPartStore, lastWorkedPart, validatePartName, type ProjectDetail } from "../../src/data/projects/project-part-store";
 
-const detail: ProjectDetail = { id: "project", name: "가디건", notes: null, status: "active", revision: 2,
+const detail: ProjectDetail = { id: "project", name: "가디건", notes: null, status: "active", progressPercent: null, revision: 2,
   updatedAt: "2026-10-19T09:00:00Z", parts: [
-    { id: "default", name: "기본 파트", position: 0, isDefault: true, workItemId: "work-a", workItemRevision: 0,
+    { id: "default", name: "기본 파트", position: 0, isDefault: true, status: "not_started", workItemId: "work-a", workItemRevision: 0,
       stitch: 0, row: 0, lastCountAt: null, lastEventCreatedAt: null },
-    { id: "sleeve", name: "소매", position: 1, isDefault: false, workItemId: "work-b", workItemRevision: 2,
+    { id: "sleeve", name: "소매", position: 1, isDefault: false, status: "not_started", workItemId: "work-b", workItemRevision: 2,
       stitch: 3, row: 1, lastCountAt: "2026-10-19T10:00:00Z", lastEventCreatedAt: "2026-10-19T10:01:00Z" },
   ] };
 describe("project part store", () => {

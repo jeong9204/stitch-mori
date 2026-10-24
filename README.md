@@ -253,3 +253,42 @@ Phase 3E 변경 파일(기존 `next-env.d.ts` 변경 제외):
 - 사진 데이터/서버 처리: `src/data/photos/client.ts`, `src/data/photos/photo-service.ts`, `src/lib/photos/image.ts`, `src/lib/photos/requests.ts`, `src/lib/photos/server.ts`
 - DB/검증: `supabase/migrations/20261024000001_project_photos.sql`, `supabase/tests/project_photos_test.sql`, `tests/data/project-photos.test.ts`, `tests/db/project-photos-http.mjs`
 - 구성/문서: `supabase/config.toml`, `next.config.ts`, `.env.example`, `package.json`, `package-lock.json`, `README.md`
+
+## Phase 3F-1: 수동 프로젝트 진행률·파트 상태 (UI 미연결)
+
+- `projects.progress_percent`: nullable integer, 기본값 `null`(미설정), 0~100. `null`과 0을 구분합니다. 프로젝트 완료 여부와 자동 동기화하거나 카운터/파트 상태로 계산하지 않습니다.
+- `project_parts.status`: `not_started | in_progress | paused | completed`. 기존 파트와 새 기본/추가 파트 모두 `not_started`가 기본입니다. 기존 카운터 이력으로 상태를 추론하지 않습니다.
+- 파트 상태는 수동 메타데이터입니다. 상태 변경은 코수·단수·목표·이벤트·타이머·게이지·사진에 영향을 주지 않으며, 카운터 실행 취소의 대상도 아닙니다. 카운팅/타이머 시작 권한은 기존 **프로젝트 상태** 정책을 따릅니다.
+- 기존 이름 변경/파트 관리와 같이 보류·완료 프로젝트에서도 진행률·파트 상태를 수정할 수 있습니다. 프로젝트가 보류/완료이면 기존 카운팅 및 타이머 시작 제한은 그대로 유지합니다. 삭제된 프로젝트/파트에는 새 변경을 적용하지 않습니다. 소프트 삭제·복구는 값과 ID를 보존하며, 기본 파트 삭제 금지 정책도 유지합니다.
+
+### 저장·조회 계약과 Phase 3F-2 연결
+
+순수 도메인 계약은 `src/domain/project/tracking.ts`, 저장소는 `src/data/projects/project-tracking-store.ts`입니다. 새 RPC `apply_project_tracking_command(p_project_id, p_request_id, p_expected_revision, p_action)`는 다음 명령을 받습니다.
+
+```ts
+// 동일 명령 재시도 시 requestId, expectedRevision, action을 모두 유지합니다.
+{ projectId, requestId, expectedRevision, action: { type: "setProgress", value: 50 } }
+{ projectId, requestId, expectedRevision, action: { type: "setProgress", value: null } }
+{ projectId, requestId, expectedRevision, action: { type: "setPartStatus", partId, status: "in_progress" } }
+```
+
+- `ProjectTrackingStore.apply()` 결과: `applied | unchanged | duplicate`와 `projectRevision`, `projectId`, 변경 전후 `change`; 충돌은 `conflict`와 `latestRevision`입니다.
+- 프로젝트 행 잠금과 **기존 공유 project revision**으로 진행률·파트 상태 및 다른 프로젝트 편집 간 충돌을 검사합니다. 값이 같으면 `unchanged` 영수증을 남기고 revision/수정 시각은 올리지 않습니다. stale revision은 값이 같아도 충돌입니다.
+- 기존 `project_part_commands`의 계정별 request ID 공간과 advisory lock을 재사용합니다. 기존 파트 명령과도 ID를 공유하므로 다른 내용에 같은 request ID를 사용하면 거부합니다. 정확한 재전송에는 최초 결과를 반환하며 이후 변경/삭제 상태를 덮어쓰지 않습니다. 영수증에는 요청과 변경 전후 값·결과·서버 시각이 남습니다. 사용자용 활동 로그 UI는 이번 범위가 아닙니다.
+- DB integer 범위 CHECK 및 part status CHECK, TypeScript 입력 검사와 RPC JSON 수치 검증을 함께 적용합니다. 특히 소수는 integer 캐스트로 반올림되기 **전에** 거부합니다. 기존 테이블 RLS/직접 쓰기 제한을 그대로 유지합니다.
+- 프로젝트 목록 `Project.progressPercent`, 상세 `ProjectDetail.progressPercent`, 파트 `ProjectPart.status`에 확정값을 제공합니다. 기존 create/update/delete 프로젝트 응답에도 `progressPercent`를 추가했습니다. 필드가 없는 과거 응답은 미설정/null 및 not_started로 읽지만 잘못된 값은 오류로 처리합니다. DB 마이그레이션 적용이 먼저 필요합니다.
+- Phase 3F-2에서는 동일 명령 객체를 오류 시 보존하고, 성공 후 목록/상세를 다시 조회하도록 연결해야 합니다. `conflict`를 자동 덮어쓰기하거나 자동 재적용하지 않습니다. 이번에는 새 IndexedDB 큐나 UI/자동 재시도를 추가하지 않았습니다.
+
+로컬 검증:
+
+```sh
+npx supabase migration up --local
+npx supabase test db --network-id stitch-mori-local
+node tests/db/project-tracking-http.mjs
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+HTTP 검증은 로컬 주소만 허용하고 별도 OTP 테스트 사용자로 동일 명령 동시 전송, 응답 유실 재전송, 서로 다른 명령의 revision 충돌, 기존 편집 명령과의 충돌, RLS/소유권 및 삭제·복구를 검증합니다. 온라인 Supabase에는 적용하지 않습니다.

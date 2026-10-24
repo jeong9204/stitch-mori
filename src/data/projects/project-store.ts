@@ -1,11 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { isProjectProgress, type ProjectProgress } from "../../domain/project/tracking";
+
 export type ProjectStatus = "active" | "paused" | "completed";
 export type Project = {
   id: string;
   name: string;
   notes: string | null;
   status: ProjectStatus;
+  progressPercent: ProjectProgress;
   revision: number;
   createdAt: string;
   updatedAt: string;
@@ -27,12 +30,15 @@ export function validateProjectInput(input: Pick<ProjectInput, "name" | "notes">
 type ProjectRow = {
   id: string; name: string; notes: string | null; status: ProjectStatus; revision: number;
   created_at: string; updated_at: string; deleted_at: string | null;
+  progress_percent?: ProjectProgress;
   project_parts: { id: string; work_item_id: string; is_default: boolean }[];
 };
 function mapRow(row: ProjectRow): Project {
   const part = row.project_parts.find((candidate) => candidate.is_default);
   if (!part) throw new Error("기본 파트를 찾을 수 없습니다.");
-  return { id: row.id, name: row.name, notes: row.notes, status: row.status, revision: row.revision,
+  const progressPercent = row.progress_percent === undefined ? null : row.progress_percent;
+  if (!isProjectProgress(progressPercent)) throw new Error("프로젝트 진행률 응답이 올바르지 않습니다.");
+  return { progressPercent, id: row.id, name: row.name, notes: row.notes, status: row.status, revision: row.revision,
     createdAt: row.created_at, updatedAt: row.updated_at, deletedAt: row.deleted_at,
     defaultPartId: part.id, workItemId: part.work_item_id };
 }
@@ -42,7 +48,9 @@ function mapResult(value: unknown): Project {
   if (typeof result.id !== "string" || typeof result.workItemId !== "string" || typeof result.defaultPartId !== "string") {
     throw new Error("프로젝트 응답이 올바르지 않습니다.");
   }
-  return { id: result.id, name: result.name as string, notes: result.notes as string | null,
+  const progressPercent = result.progressPercent === undefined ? null : result.progressPercent;
+  if (!isProjectProgress(progressPercent)) throw new Error("프로젝트 진행률 응답이 올바르지 않습니다.");
+  return { progressPercent, id: result.id, name: result.name as string, notes: result.notes as string | null,
     status: result.status as ProjectStatus, revision: result.revision as number,
     createdAt: result.createdAt as string, updatedAt: result.updatedAt as string,
     deletedAt: result.deletedAt as string | null, defaultPartId: result.defaultPartId, workItemId: result.workItemId };
@@ -58,7 +66,7 @@ export class ProjectStore {
 
   async list(): Promise<Project[]> {
     const { data, error } = await this.client.from("projects")
-      .select("id,name,notes,status,revision,created_at,updated_at,deleted_at,project_parts(id,work_item_id,is_default)")
+      .select("id,name,notes,status,progress_percent,revision,created_at,updated_at,deleted_at,project_parts(id,work_item_id,is_default)")
       .is("deleted_at", null).order("updated_at", { ascending: false });
     throwError(error);
     return ((data ?? []) as ProjectRow[]).map(mapRow);
