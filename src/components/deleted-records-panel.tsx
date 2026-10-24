@@ -80,16 +80,17 @@ export function DeletedRecordsPanel({ userId, projectId, onRestored }: {
   return <section className="recovery-panel" aria-label={`삭제된 ${noun} 복구`}>
     <button ref={toggleRef} className="button button-secondary recovery-toggle" type="button" aria-expanded={open} aria-controls={panelId}
       onClick={() => { setOpen(!open); if (!open) { setSuccess(""); void load(); } }} disabled={busy}>삭제된 {noun} {open ? "접기" : "보기"}</button>
+    {success && <p className="recovery-success" role="status">{success}</p>}
+    {pending && <div className="notice" role="status"><p>복구 요청의 서버 결과를 확인하고 있습니다. 목록을 접어도 요청은 이 화면에 유지됩니다.</p><button className="button button-secondary" type="button" disabled={busy} onClick={() => void restore(pending)}>같은 요청으로 재시도</button></div>}
+      {error && <div className="quick-error-box" role="alert"><p>{error}</p><div className="project-form-actions">
+        <button type="button" disabled={busy} onClick={() => { setPending(null); void load(); }}>삭제 목록 다시 불러오기</button>
+      </div></div>}
     {open && <div id={panelId} className="recovery-content">
       <h2>삭제된 {noun}</h2><p className="recovery-policy">{projectId ? "복구한 파트는 목록 끝에 추가됩니다. 기존 카운터와 변경 이력은 유지됩니다." : "프로젝트는 삭제 전 상태로 돌아갑니다. 이전에 개별 삭제한 파트는 따로 복구해 주세요."}</p>
       <p className="recovery-policy">미확정 카운터 명령은 복구 과정에서 자동 전송하지 않습니다.</p>
       {loading && <p role="status">삭제된 항목을 불러오는 중입니다.</p>}
       {busy && <p role="status">서버에서 복구를 확인하고 있습니다.</p>}
-      {success && <p className="recovery-success" role="status">{success}</p>}
-      {error && <div className="quick-error-box" role="alert"><p>{error}</p><div className="project-form-actions">
-        {pending && <button type="button" disabled={busy} onClick={() => void restore(pending)}>같은 요청으로 재시도</button>}
-        <button type="button" disabled={busy} onClick={() => { setPending(null); void load(); }}>삭제 목록 다시 불러오기</button>
-      </div></div>}
+
       {!loading && !error && items.length === 0 && <p className="recovery-empty">삭제된 {noun}가 없습니다.</p>}
       {!loading && <ul className="recovery-list">{items.map((item) => <li key={item.id}>
         <div><h3>{item.name}</h3><p>삭제 <time dateTime={item.deletedAt}>{formatDate(item.deletedAt)}</time></p>

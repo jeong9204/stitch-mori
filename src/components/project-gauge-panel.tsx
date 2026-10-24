@@ -101,11 +101,16 @@ export function ProjectGaugePanel({ projectId, userId }: { projectId: string; us
     {loading && <p role="status">게이지를 불러오는 중입니다.</p>}
     {success && <p className="recovery-success" role="status">{success}</p>}
     {error && !editor && <div role="alert" className="quick-error-box"><p>{error}</p><button className="button button-secondary" onClick={() => void refresh()}>다시 불러오기</button></div>}
-    {collection && <><div className="gauge-heading"><h3>도안의 기준</h3>{!pattern && <button className="button" disabled={controlsDisabled} onClick={e => open(e, emptyGauge("pattern"), "save")}>도안 게이지 등록</button>}</div>
+    {pending && <p className="notice" role="status">게이지 저장 결과가 미확정입니다. 입력과 요청은 현재 화면에만 보관됩니다. 새로고침·페이지 이동 전에 열린 입력창에서 같은 요청으로 재시도해 주세요.</p>}
+    {conflict && <p className="notice" role="alert">게이지 기록이 다른 화면에서 변경됐습니다. 열린 입력창에서 최신 기록을 확인해 주세요. 입력 내용은 유지됩니다.</p>}
+    {collection && <>
+      <div className="gauge-overview"><p><span>도안 게이지</span><strong>{pattern?`${pattern.stitches}코 · ${pattern.rows}단`:'미등록'}</strong>{pattern && <small>{pattern.width} × {pattern.height} {pattern.unit}</small>}</p><p><span>내 게이지 샘플</span><strong>{samples.length}개</strong></p></div>
+      <details className="record-details"><summary>게이지 관리·상세 보기 <span>도안 기준·샘플 기록</span></summary>
+      <div className="gauge-heading"><h3>도안의 기준</h3>{!pattern && <button className="button" disabled={controlsDisabled} onClick={e => open(e, emptyGauge("pattern"), "save")}>도안 게이지 등록</button>}</div>
       {pattern ? <GaugeCard g={pattern} disabled={controlsDisabled} onEdit={e => open(e, pattern, "save")} onDelete={e => open(e, pattern, "delete")} /> : <p className="gauge-empty">아직 도안 게이지가 없습니다. 입력하지 않아도 프로젝트를 사용할 수 있어요.</p>}
       <div className="gauge-heading"><div><h3>내 게이지 샘플</h3><p>측정일이 최근인 순서로 표시해요. 미지정 샘플은 뒤에 표시합니다.</p></div><button className="button" disabled={controlsDisabled} onClick={e => open(e, emptyGauge("sample"), "save")}>샘플 추가</button></div>
       {samples.length ? <div className="gauge-samples">{samples.map(g => <GaugeCard key={g.id} g={g} disabled={controlsDisabled} onEdit={e => open(e, g, "save")} onDelete={e => open(e, g, "delete")} />)}</div> : <p className="gauge-empty">직접 측정한 샘플을 추가해 보세요.</p>}
-      <button className="button button-secondary gauge-refresh" disabled={busy || !!pending} onClick={() => void refresh()}>게이지 새로고침</button></>}
+      <button className="button button-secondary gauge-refresh" disabled={busy || !!pending} onClick={() => void refresh()}>게이지 새로고침</button></details></>}
     <dialog ref={dialog} className="project-confirm gauge-dialog" aria-labelledby="gauge-dialog-title"
       onCancel={e => { e.preventDefault(); close(); }} onClose={() => { if (trigger.current?.isConnected) trigger.current.focus(); else heading.current?.focus(); }}>
       {editor && <form onSubmit={e => { e.preventDefault(); void submit(); }}>
