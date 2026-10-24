@@ -197,3 +197,59 @@ A separate `stitchmori-conversions-v1` IndexedDB journal stores the user/source-
 - 서버 성공을 확인하고 로컬 영수증까지 저장한 뒤 완료 표시합니다. 로컬 확인 저장 실패·응답 유실은 같은 스냅샷으로 재시도합니다. 완료 저장 시 원본을 다시 대조하고, 예상 밖 원본 변경은 원본·스냅샷을 보존한 채 완료 확인을 중단합니다. 이 경우 이미 서버에 보관된 스냅샷을 확인해야 하며 변경분을 자동 병합하지 않습니다. 원본은 삭제하지 않고 매핑을 누적 보관합니다. 가져온 로컬 세션은 정정 잠금을 유지하며 이후 정정은 계정에서 합니다. 이후 새 로컬 세션은 별도 묶음으로 가져올 수 있습니다. 가져오기 후 변경을 실시간 동기화하지 않습니다.
 - 삭제된 프로젝트/파트에는 새 가져오기를 거부합니다. 복구 후 같은 요청으로 재시도할 수 있습니다. 이미 확정된 영수증 재조회는 삭제 상태에서도 중복 응답을 돌려줍니다. 보류·완료 프로젝트에는 과거 종료 세션 가져오기를 허용하며 새 타이머 시작 정책은 바꾸지 않습니다. 테이블은 본인 조회만 허용하고 RPC만 쓰기 가능합니다.
 - 검증: `npm test`, `npx supabase test db --network-id stitch-mori-local`, `node tests/db/timer-imports-http.mjs`. 테스트는 로컬 Supabase만 사용합니다. 온라인 프로젝트에 마이그레이션을 적용하지 않습니다.
+
+## Phase 3E — 프로젝트 대표 사진 (로컬 개발)
+
+- 프로젝트당 대표 사진 1장입니다. 목록은 4:3, 상세는 높이를 제한한 가로형 대표 사진과 사진 관리 메뉴로 표시하며 원본 비율과 무관하게 카드 크기를 유지합니다. 사진이 없거나 로딩에 실패하면 플레이스홀더와 재조회 동작을 제공합니다.
+- `supabase/config.toml`의 로컬 Storage를 활성화했습니다. 기존 환경은 `npx supabase stop`(기본 백업 보존) 후 `npx supabase start --network-id stitch-mori-local`, `npx supabase migration up --local` 순서로 적용합니다. `db reset`, `--no-backup`, 원격 `db push`는 필요하지 않습니다.
+- `.env.local`에는 기존 로컬 URL/공개 키와 함께 `SUPABASE_SERVICE_ROLE_KEY`를 설정합니다. `npx supabase status`에 표시되는 **로컬** service-role 키를 사용하세요. 서버 재시작이 필요합니다. `.env.example`에는 자리표시자만 있습니다. 이 키에는 `NEXT_PUBLIC_` 접두사를 붙이지 않으며 Git에 추가하지 않습니다. 클라우드 프로젝트 연결은 하지 않습니다.
+- 서버 전용 키가 필요한 이유: 브라우저의 Storage 쓰기를 막고, 인증·소유권 검사를 마친 Next.js Node 서버에서 실제 이미지 디코딩을 수행한 결과만 업로드하기 위해서입니다. 서버는 요청의 Origin과 Host를 비교합니다. 배포용 프록시는 실제 외부 Host를 보존해야 합니다.
+
+### 저장·검증·권한
+
+`project-photos`는 private bucket입니다. 업로드 입력은 JPEG/PNG/WebP, 최대 10MiB이며 실제 스트림 바이트 수를 제한합니다. Next proxy의 본문 상한은 12MB로 두어 Content-Length 없는 초과 입력도 사진 API의 10MiB 제한에 도달해 거부되도록 했습니다(사진 허용 크기는 늘리지 않습니다). 확장자나 Content-Type 선언으로 형식을 결정하지 않습니다. Sharp가 실제 디코딩, 최대 4천만 입력 픽셀 제한, 단일 프레임 검증, EXIF 방향 보정, 긴 변 1600px 이내 축소, WebP 변환(quality 82)을 수행합니다. 결과에는 원본 EXIF·위치 정보·ICC 메타데이터를 복사하지 않습니다. 원본 파일은 서버 Storage에 저장하지 않습니다. bucket도 최대 10MiB 및 WebP 형식을 제한합니다.
+
+- `project_photos`: 프로젝트·소유자·고유 객체 경로·출력 크기/해상도·SHA-256·보관/정리 시각.
+- `projects.cover_photo_id`: 소유권을 포함한 복합 FK로 현재 사진 하나를 가리킵니다. 사진 경로는 `userId/projectId/photoId.webp`입니다. 파일 바이트나 공개 URL은 DB에 저장하지 않습니다.
+- `project_photo_changes`: 사용자별 request ID, 입력/결과 해시, expected project revision, 처리 상태, 확정 영수증. 기존 프로젝트 RPC 계약과 마이그레이션은 유지합니다.
+- 인증 사용자는 현재 본인 프로젝트의 현재 사진만 RLS를 통해 읽습니다. 사진 메타데이터 및 Storage 객체의 직접 INSERT/UPDATE/DELETE는 허용하지 않습니다. 사진 변경 RPC는 `service_role` 전용이며 전달된 사용자와 프로젝트 소유권도 검증합니다. API는 검증된 로그인 사용자 ID만 전달합니다.
+- 이미지 표시 API는 매번 로그인·프로젝트 소유권·현재 photo ID를 확인하고 private/no-store 바이너리를 반환합니다. 장기 공개 URL이나 signed URL을 발급·저장하지 않으므로 signed URL 만료 갱신은 필요하지 않습니다. 인증 만료·연결 실패 시 재로그인/사진 최신 상태 확인으로 다시 조회합니다. Next 이미지 최적화 캐시에 비공개 사진을 넣지 않습니다.
+- 향후 갤러리는 별도 사진 역할/정렬 관계를 확장할 수 있습니다. 이번 구현에는 갤러리·사진 파일 오프라인 큐가 없습니다.
+
+### 교체·삭제·재시도 순서
+
+1. 서버에서 입력을 검증하고 최적화합니다. 안정적인 request ID와 입력/결과 해시로 후보 경로를 예약합니다. 이 시점에는 기존 사진과 프로젝트 revision이 바뀌지 않습니다.
+2. 새 경로에 `upsert: false`로 업로드합니다. 응답이 유실됐거나 같은 요청이 겹치면 해당 객체의 실제 SHA-256을 확인한 뒤 계속합니다. 다른 바이트로 기존 경로를 덮어쓰지 않습니다.
+3. 프로젝트와 요청을 잠그고 expected revision을 검사합니다. Storage 객체 존재와 출력 메타데이터를 확인한 뒤 현재 연결·프로젝트 revision·영수증을 한 DB 트랜잭션에서 확정합니다. 동시 교체 중 하나만 확정되며 충돌은 자동 덮어쓰기하지 않습니다. 오래된 확정 요청의 재시도는 기존 영수증을 반환합니다.
+4. 확정 후에만 이전 사진을 Storage API로 정리합니다. 정리 실패는 별도 `정리 필요` 상태와 재시도 버튼으로 안내하며 현재 사진/확정 결과를 되돌리지 않습니다. DB에서 Storage 객체 행만 직접 삭제하지 않습니다.
+5. 사진 삭제도 먼저 DB 연결 해제와 영수증을 확정한 뒤 파일을 정리합니다. 프로젝트 자체는 유지됩니다. 프로젝트 소프트 삭제는 현재 사진을 정리하지 않으며 복구 시 같은 사진 연결을 유지합니다. 삭제된 프로젝트에서는 일반 사진 조회·변경을 차단합니다.
+
+요청 ID/expected revision/동작/파일명만 계정·프로젝트별 localStorage 복구 영수증에 보관합니다. 사진 파일은 저장하지 않습니다. 저장 확인이 불분명하면 같은 파일·같은 요청으로 재시도합니다. 페이지를 다시 열면 서버 영수증을 확인해 이미 확정된 요청을 중복 업로드하지 않고 완료 표시합니다. 미확정 업로드는 같은 파일을 다시 선택해야 할 수 있습니다. 요청 복구 정보 저장에 실패하면 업로드를 시작하지 않습니다. 미확정 상태에서는 페이지 이탈 경고를 제공합니다. 취소는 서버에서 미확정 요청만 포기하며 이미 확정된 결과는 유지합니다.
+
+정리 정책: 후보 업로드가 열린 탭 종료 등으로 남으면 24시간 후 정리 대상으로 전환합니다. 충돌·취소된 후보는 늦게 도착한 업로드와의 경합을 피하기 위해 최소 15분 뒤 정리합니다. 정리는 다음 사진 변경 또는 상세 화면의 `이전 파일 정리 재시도`에서 수행하며, 현재 연결된 사진은 언제나 제외합니다. **자동 주기 정리 작업은 이번 범위에 없습니다.** 장기간 사진을 관리하지 않는 프로젝트의 후보 파일은 관리 재시도 전까지 남을 수 있습니다. 향후 서버 청소 작업은 같은 후보 조회/확인 계약을 재사용하면 됩니다.
+
+네트워크 연결이 없으면 업로드 완료로 표시하지 않습니다. 파일·요청을 현재 화면에서 유지하고 연결 후 명시적으로 재시도하도록 안내합니다. 새로고침 후 파일 자체의 자동 복원이나 오프라인 자동 업로드는 지원하지 않습니다. 다른 탭의 편집은 서버 project revision으로 보호합니다.
+
+### 검증 명령
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npx supabase test db --network-id stitch-mori-local
+# 별도 터미널에서 localhost 대신 127.0.0.1의 검증용 앱을 실행한 뒤:
+npm run start -- --hostname 127.0.0.1 --port 3001
+# 다른 터미널:
+node tests/db/project-photos-http.mjs
+```
+
+HTTP 테스트는 로컬 Supabase/앱 주소만 허용하며 별도 OTP 테스트 사용자로 실제 Storage 업로드, 동시 교체, 응답 유실 재전송, private 읽기/직접 쓰기 차단, 잘못된 이미지·크기, 프로젝트 삭제/복구를 검증합니다. 생성한 테스트 객체와 테스트 사용자 데이터만 종료 시 정리합니다. 기존 사용자 프로젝트는 변경하지 않습니다.
+
+Phase 3E 변경 파일(기존 `next-env.d.ts` 변경 제외):
+
+- UI: `src/components/project-cover-photo.tsx`, `src/components/project-manager.tsx`, `src/components/project-detail-view.tsx`, `src/app/globals.css`
+- 사진 API: `src/app/api/projects/[projectId]/photo/route.ts`, `photo/image/route.ts`, `photo/cancel/route.ts`, `photo/cleanup/route.ts`
+- 사진 데이터/서버 처리: `src/data/photos/client.ts`, `src/data/photos/photo-service.ts`, `src/lib/photos/image.ts`, `src/lib/photos/requests.ts`, `src/lib/photos/server.ts`
+- DB/검증: `supabase/migrations/20261024000001_project_photos.sql`, `supabase/tests/project_photos_test.sql`, `tests/data/project-photos.test.ts`, `tests/db/project-photos-http.mjs`
+- 구성/문서: `supabase/config.toml`, `next.config.ts`, `.env.example`, `package.json`, `package-lock.json`, `README.md`

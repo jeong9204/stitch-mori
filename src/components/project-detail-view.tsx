@@ -2,6 +2,7 @@
 
 import { TimeStatisticsPanel } from "./time-statistics-panel";
 import Link from "next/link";
+import { ProjectCoverPhoto } from "./project-cover-photo";
 import { ActionMenu } from "./action-menu";
 import { ProjectGaugePanel } from "@/components/project-gauge-panel";
 import { DeletedRecordsPanel } from "@/components/deleted-records-panel";
@@ -143,7 +144,12 @@ export function ProjectDetailView({ userId, projectId }: { userId: string; proje
       <button type="button" onClick={() => void reload()} disabled={busy}>{conflict ? "최신 상태 확인" : "목록 다시 불러오기"}</button>
     </div></div>}
     {detail && <>
-      <header className="project-detail-hero"><p className="eyebrow">나의 뜨개 프로젝트</p><div className="project-detail-title"><ProjectName key={`${detail.id}:${detail.name}`} name={detail.name} headingRef={projectHeadingRef} /><span className={`project-status project-status--${detail.status}`}>{projectStatusLabels[detail.status]}</span></div>
+      <header className="project-detail-hero"><p className="eyebrow">나의 뜨개 프로젝트</p><ProjectCoverPhoto key={`${userId}:${projectId}`} userId={userId} projectId={projectId} editable onChanged={async () => {
+        // Photo updates share project revision. Refresh it without clearing an existing part error/pending request.
+        const updated = await store.detail(projectId);
+        if (!updated) throw new Error("사진은 저장됐지만 프로젝트를 다시 불러오지 못했습니다. 최신 상태를 확인해 주세요.");
+        setDetail(updated);
+      }} /><div className="project-detail-title"><ProjectName key={`${detail.id}:${detail.name}`} name={detail.name} headingRef={projectHeadingRef} /><span className={`project-status project-status--${detail.status}`}>{projectStatusLabels[detail.status]}</span></div>
         {detail.notes && <details className="project-note-details"><summary><span className="project-notes-preview">{detail.notes}</span><small>메모 전체 보기·접기</small></summary><p className="project-notes">{detail.notes}</p></details>}<p className="project-detail-updated">최근 프로젝트 수정 {timeLabel(detail.updatedAt)}</p><ActionMenu label="프로젝트 관리"><Link href="/projects">프로젝트 이름·메모·상태 수정하기 ↗</Link></ActionMenu>
       </header>
       {detail.status !== "active" && <p className="notice" role="status">{projectStatusLabels[detail.status]} 프로젝트의 카운터는 읽기 전용입니다. <Link href="/projects">프로젝트 목록에서 진행 중으로 변경</Link>하면 다시 카운트할 수 있습니다.</p>}

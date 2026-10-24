@@ -557,3 +557,44 @@ button { cursor: pointer; }
   .project-name-heading[data-expanded="false"] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
   .project-name-toggle { display: inline-flex; align-items: center; }
 }
+
+/* Private project cover: fixed proportions keep controls and titles predictable. */
+.project-cover { min-width: 0; }
+.project-cover-image { overflow: hidden; border-radius: 16px; background: var(--color-background); aspect-ratio: 4 / 3; }
+.project-cover-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.project-cover-placeholder { display: grid; place-content: center; text-align: center; height: 100%; color: var(--color-text-secondary); gap: 6px; }
+.project-cover-placeholder > span { color: var(--color-primary-strong); font-size: 2.5rem; }
+.project-cover--list { margin: 12px 0; }
+.project-cover-controls:empty { display: none; }
+.project-cover--editable { position: relative; margin-bottom: 16px; }
+.project-cover--editable .project-cover-image { height: 144px; aspect-ratio: auto; border: 1px solid var(--color-line); border-radius: 18px; }
+.project-cover--editable.is-empty .project-cover-image { height: 96px; background: linear-gradient(120deg,var(--color-soft-rose),var(--color-background) 65%,var(--color-soft-sage)); }
+.project-cover--editable .project-cover-placeholder { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--color-primary-contrast); }
+.project-yarn-icon { width: 70px; height: 60px; flex: 0 0 auto; }
+.project-cover--editable .project-cover-placeholder small { max-width: 130px; font-size: .8rem; line-height: 1.5; color: var(--color-text-secondary); }
+.project-cover--editable.has-photo .project-cover-controls > .project-cover-actions { position: absolute; top: 10px; right: 10px; }
+.project-cover--editable.is-empty .project-cover-controls > .project-cover-actions { margin-top: 10px; }
+.project-photo-menu { position: relative; }
+.project-photo-menu > summary { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 8px 13px; border: 1px solid var(--color-line); border-radius: 13px; background: var(--color-card); color: var(--color-text); font-size: .8rem; font-weight: 700; list-style: none; cursor: pointer; box-shadow: var(--shadow-card); }
+.project-photo-menu > summary::-webkit-details-marker { display: none; }
+.project-photo-menu-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 8; width: 190px; max-width: calc(100vw - 64px); padding: 8px; border: 1px solid var(--color-line); border-radius: 14px; background: var(--color-card); box-shadow: var(--shadow-card); }
+.project-photo-menu-panel > button { display: block; width: 100%; min-height: 44px; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: var(--color-text); text-align: left; font: inherit; font-size: .85rem; }
+.project-photo-menu-panel > button:hover { background: var(--color-soft-rose); }
+.project-photo-menu-panel > small { display: block; padding: 7px 10px; font-size: .7rem; line-height: 1.6; color: var(--color-text-secondary); }
+.project-cover-controls { min-width: 0; overflow-wrap: anywhere; }
+.project-cover-controls > small { display: block; margin-top: 8px; font-size: .75rem; color: #75564c; }
+.project-cover-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.project-cover-actions .button { min-height: 44px; padding: 9px 12px; font-size: .85rem; }
+.project-cover-actions button:not(.button), .project-cover-controls .quick-error-box button { min-height: 44px; }
+.project-photo-input { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; white-space: nowrap; }
+.project-photo-status { margin: 8px 0 0; color: var(--color-text); font-size: .85rem; }
+@media (min-width: 375px) { .project-cover--editable .project-cover-image { height: 152px; } }
+.project-cover .notice, .project-cover .quick-error-box { margin-top: 10px; padding: 10px; font-size: .85rem; }
+@media (min-width: 768px) { .project-cover--editable .project-cover-image { height: 208px; } }
+/* Reserve the full 46px existing management control before the photo row. */
+.project-detail-hero > .eyebrow { min-height: 46px; }
+/* Empty cover stays compact while keeping registration visible. */
+.project-cover--editable.is-empty .project-cover-controls > .project-cover-actions { position: absolute; top: 14px; right: 12px; margin-top: 0; }
+.project-cover--editable.is-empty .project-cover-placeholder { position: relative; justify-content: flex-start; }
+.project-cover--editable.is-empty .project-yarn-icon { position: absolute; top: 6px; left: 12px; width: 64px; height: 52px; }
+.project-cover--editable.is-empty .project-cover-placeholder small { position: absolute; left: 16px; bottom: 10px; max-width: calc(100% - 32px); }
