@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProjectProgress } from "./project-progress";
 import { ProjectCoverPhoto } from "./project-cover-photo";
 import { ActionMenu } from "./action-menu";
 import { DeletedRecordsPanel } from "@/components/deleted-records-panel";
@@ -133,7 +134,7 @@ export function ProjectManager({ userId }: { userId: string }) {
     {mode === "list" && (loading ? <p className="notice" role="status">프로젝트를 불러오는 중입니다.</p> : projects.length === 0 ? <section className="project-empty"><span aria-hidden="true">✳</span><h2>아직 프로젝트가 없어요</h2><p>새 프로젝트를 만들면 기본 파트와 카운터가 함께 준비됩니다.</p><button className="button" type="button" onClick={startCreate}>첫 프로젝트 만들기</button></section> : <ul className="project-list">{projects.map((project) => <li className="project-card" key={project.id}>
       <div className="project-card-head"><span className={`project-status project-status--${project.status}`}>{projectStatusLabels[project.status]}</span><time dateTime={project.updatedAt}>최근 수정 {dateLabel(project.updatedAt)}</time></div>
       <ProjectCoverPhoto key={`${userId}:${project.id}`} userId={userId} projectId={project.id} /><h2>{project.name}</h2>{project.notes && <p className="project-notes project-notes-preview">{project.notes}</p>}
-      <div className="project-card-actions"><Link className="button" href={`/projects/${project.id}`}>프로젝트 상세 보기</Link><ActionMenu label={`${project.name} 프로젝트 관리`}><button type="button" onClick={() => startEdit(project)} disabled={busy}>수정</button>
+      <ProjectProgress value={project.progressPercent} /><div className="project-card-actions"><Link className="button" href={`/projects/${project.id}`}>프로젝트 상세 보기</Link><ActionMenu label={`${project.name} 프로젝트 관리`}><button type="button" onClick={() => startEdit(project)} disabled={busy}>수정</button>
         <label className="project-status-picker">상태 <select aria-label={`${project.name} 상태`} value={project.status} onChange={(event) => void changeStatus(project, event.target.value as ProjectStatus)} disabled={busy}>{Object.entries(projectStatusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
         <button type="button" className="project-delete" onClick={(event) => { deleteTriggerRef.current = event.currentTarget.closest("details")?.querySelector("summary") ?? event.currentTarget; setDeleteTarget(project); }} disabled={busy}>삭제</button></ActionMenu></div>
     </li>)}</ul>)}
