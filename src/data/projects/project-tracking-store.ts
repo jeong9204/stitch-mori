@@ -27,7 +27,7 @@ export class ProjectTrackingStore {
     const { data, error } = await this.client.rpc("apply_project_tracking_command", {
       p_project_id: command.projectId, p_request_id: command.requestId,
       p_expected_revision: command.expectedRevision, p_action: command.action,
-    });
+    }).retry(false);
     if (error) {
       if (error.code === "P0002") throw new Error("프로젝트 또는 파트를 찾을 수 없습니다.");
       throw new Error(error.message);

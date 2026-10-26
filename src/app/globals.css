@@ -622,7 +622,11 @@ button { cursor: pointer; }
 .tracking-fields input[type="range"] { width: 100%; min-width: 0; min-height: 44px; margin: 0; accent-color: var(--color-primary-contrast); }
 .tracking-fields .button { justify-self: start; }
 .tracking-fields fieldset:disabled { opacity: .7; }
-.tracking-dialog .project-form-actions > button { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+html:has(.tracking-dialog[open], .tracking-leave-dialog[open]),
+body:has(.tracking-dialog[open], .tracking-leave-dialog[open]) { overflow: hidden; }
+.tracking-dialog, .tracking-leave-dialog { overscroll-behavior: contain; }
+.tracking-dialog .project-form-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+.tracking-dialog .project-form-actions > button { width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
 .tracking-dialog .tracking-error { color: var(--color-error); padding: 12px; border-radius: 12px; background: #fff1ef; }
 .tracking-comparison strong { color: var(--color-text); }
 .project-part-title .part-work-status { background: #f0e9e1; color: #6d5143; }
@@ -632,3 +636,5 @@ button { cursor: pointer; }
   .project-tracking-overview { grid-template-columns: minmax(0,1fr); gap: 10px; }
   .project-tracking-overview > .button { justify-self: start; }
 }
+
+.tracking-warning li a { display: block; min-height: 44px; padding: 10px 0; overflow-wrap: anywhere; }

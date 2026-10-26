@@ -4,6 +4,9 @@ import { isPartStatus, isProjectProgress, partStatuses, validateTrackingCommand,
 import { ProjectStore } from "../../src/data/projects/project-store";
 import { ProjectPartStore } from "../../src/data/projects/project-part-store";
 
+function transport(rpc: (...args: unknown[]) => unknown) {
+  return { rpc: (...args: unknown[]) => ({ retry: (enabled: boolean) => { expect(enabled).toBe(false); return rpc(...args); } }) };
+}
 const command: ProjectTrackingCommand = { projectId: "aaaaaaaa-0000-4000-8000-000000000001", requestId: "aaaaaaaa-0000-4000-8000-000000000002", expectedRevision: 2, action: { type: "setProgress", value: 50 } };
 const result = { status: "applied", projectId: command.projectId, projectRevision: 3, change: { type: "setProgress", before: null, after: 50 } };
 
@@ -31,7 +34,7 @@ describe("manual project tracking", () => {
   });
   it("retries the exact command after response loss without mutating it", async () => {
     const rpc = vi.fn().mockResolvedValueOnce({ data: null, error: { message: "network" } }).mockResolvedValueOnce({ data: { ...result, status: "duplicate" }, error: null });
-    const store = new ProjectTrackingStore({ rpc } as never);
+    const store = new ProjectTrackingStore(transport(rpc) as never);
     const original = structuredClone(command);
     await expect(store.apply(command)).rejects.toThrow("network");
     expect((await store.apply(command)).status).toBe("duplicate");
@@ -41,13 +44,13 @@ describe("manual project tracking", () => {
   });
   it("returns conflict without rebasing or automatic retry", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { status: "conflict", latestRevision: 4 }, error: null });
-    expect(await new ProjectTrackingStore({ rpc } as never).apply(command)).toEqual({ status: "conflict", latestRevision: 4 });
+    expect(await new ProjectTrackingStore(transport(rpc) as never).apply(command)).toEqual({ status: "conflict", latestRevision: 4 });
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(command.expectedRevision).toBe(2);
   });
   it("validates before networking and rejects malformed server results", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { ...result, projectRevision: -1 }, error: null });
-    const store = new ProjectTrackingStore({ rpc } as never);
+    const store = new ProjectTrackingStore(transport(rpc) as never);
     await expect(store.apply({ ...command, action: { type: "setProgress", value: 101 } })).rejects.toThrow();
     expect(rpc).not.toHaveBeenCalled();
     await expect(store.apply(command)).rejects.toThrow(/응답/);

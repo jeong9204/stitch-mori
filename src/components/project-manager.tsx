@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TrackingPendingNotice } from "./tracking-pending-notice";
 import { ProjectProgress } from "./project-progress";
 import { ProjectCoverPhoto } from "./project-cover-photo";
 import { ActionMenu } from "./action-menu";
@@ -119,6 +120,7 @@ export function ProjectManager({ userId }: { userId: string }) {
       <div><p className="eyebrow">나의 뜨개 작업실</p><h1 ref={projectHeadingRef} tabIndex={-1}>프로젝트</h1><p>작업을 정리하고 파트별 카운터를 이어서 사용하세요.</p></div>
       {mode === "list" && <button className="button" type="button" onClick={startCreate}>새 프로젝트 만들기</button>}
     </header>
+    <TrackingPendingNotice key={userId} userId={userId} projects={projects} />
     {error && <div className="quick-error-box" role="alert"><p>{error}</p>{mode === "list" && <button type="button" onClick={() => void refresh()}>목록 다시 불러오기</button>}</div>}
     {mode !== "list" && <section className="project-form-card" aria-label={mode === "create" ? "새 프로젝트" : "프로젝트 수정"}>
       <h2>{mode === "create" ? "새 프로젝트 만들기" : "프로젝트 수정"}</h2>

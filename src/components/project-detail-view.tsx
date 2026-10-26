@@ -148,16 +148,16 @@ export function ProjectDetailView({ userId, projectId }: { userId: string; proje
       {pending && <button type="button" onClick={() => void submit(pending)} disabled={busy}>같은 요청으로 재시도</button>}
       <button type="button" onClick={() => void reload()} disabled={busy || trackingLocked}>{conflict ? "최신 상태 확인" : "목록 다시 불러오기"}</button>
     </div></div>}
-    {detail && <>
-      <header className="project-detail-hero"><p className="eyebrow">나의 뜨개 프로젝트</p><ProjectCoverPhoto key={`${userId}:${projectId}`} userId={userId} projectId={projectId} editable onChanged={async () => {
+      <header className="project-detail-hero">{detail && <><p className="eyebrow">나의 뜨개 프로젝트</p><ProjectCoverPhoto key={`${userId}:${projectId}`} userId={userId} projectId={projectId} editable onChanged={async () => {
         // Photo updates share project revision. Refresh it without clearing an existing part error/pending request.
         const updated = await store.detail(projectId);
         if (!updated) throw new Error("사진은 저장됐지만 프로젝트를 다시 불러오지 못했습니다. 최신 상태를 확인해 주세요.");
         setDetail(updated);
       }} /><div className="project-detail-title"><ProjectName key={`${detail.id}:${detail.name}`} name={detail.name} headingRef={projectHeadingRef} /><span className={`project-status project-status--${detail.status}`}>{projectStatusLabels[detail.status]}</span></div>
         {detail.notes && <details className="project-note-details"><summary><span className="project-notes-preview">{detail.notes}</span><small>메모 전체 보기·접기</small></summary><p className="project-notes">{detail.notes}</p></details>}<p className="project-detail-updated">최근 프로젝트 수정 {timeLabel(detail.updatedAt)}</p><ActionMenu label="프로젝트 관리"><Link href="/projects">프로젝트 이름·메모·상태 수정하기 ↗</Link></ActionMenu>
-        <ProjectTrackingEditor key={`tracking:${userId}:${projectId}`} client={client} userId={userId} detail={detail} target={trackingTarget} onTarget={setTrackingTarget} onSaved={setDetail} onLocked={setTrackingLocked} disabled={busy || !!pending} />
+        </>}<ProjectTrackingEditor key={`tracking:${userId}:${projectId}`} client={client} userId={userId} projectId={projectId} detail={detail} target={trackingTarget} onTarget={setTrackingTarget} onSaved={setDetail} onLocked={setTrackingLocked} disabled={busy || !!pending} />
       </header>
+    {detail && <>
       {detail.status !== "active" && <p className="notice" role="status">{projectStatusLabels[detail.status]} 프로젝트의 카운터는 읽기 전용입니다. <Link href="/projects">프로젝트 목록에서 진행 중으로 변경</Link>하면 다시 카운트할 수 있습니다.</p>}
       {latest && <section className="project-resume"><div><p className="eyebrow">이어서 작업하기</p><h2>{latest.name}</h2><p className="project-resume-counts">{latest.stitch}코 <span>·</span> {latest.row}단 완료</p><p>{latest.lastCountAt ? `마지막 변경 ${timeLabel(latest.lastCountAt)}` : "아직 카운트 기록이 없어 기본 파트를 추천해요."}</p></div><Link className="button" href={`/projects/${projectId}/parts/${latest.id}`}>파트 카운터 열기</Link></section>}
       <section className="project-parts-section"><div className="project-parts-heading"><div><p className="eyebrow">작업 파트</p><h2>파트별 카운터</h2><p>같은 파트명을 여러 번 사용할 수 있습니다. 각 파트의 카운터는 서로 독립적입니다.</p></div><button type="button" className="button" onClick={() => { setAdding(true); setError(""); }} disabled={busy || !!pending || trackingLocked}>파트 추가</button></div>
