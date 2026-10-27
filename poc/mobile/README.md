@@ -98,3 +98,24 @@ Filesystem용 iOS `PrivacyInfo.xcprivacy`를 앱 리소스에 포함했습니다
 8. 앱 오프로딩(iOS), 저장소/캐시 정리(Android), 저용량·백업 취소·공유 취소·앱 업데이트 중단, 320/375px 상당 작은 화면·키보드·safe-area 확인.
 
 이 절차가 끝나기 전에는 기존 앱의 본격 이전이나 앱스토어 출시 준비 완료로 판단하지 않습니다. 다음 단계는 실기기 결과를 바탕으로 저장 계층(IDB 유지 또는 네이티브 SQLite/파일)을 결정하고, 메모리 대기 입력의 내구성 및 백업 규모 제한을 보완하는 것입니다. 클라우드 연결과 기존 데이터 이전은 별도 작업입니다.
+
+## iPhone 실행 점검 추가 기록 (2026-10-27)
+
+후속 점검 환경은 Xcode 27.1 / iOS SDK 27.1 / 실제 iPhone 16 Pro(iOS 27.0.1)입니다. 위 ‘이 환경의 검증 결과’는 초기 생성 시점의 기록이며, 후속 실기기 결과는 이 절을 기준으로 구분합니다. Android 네이티브 검증은 여전히 미완료입니다.
+
+처음에는 앱이 설치돼도 홈 아이콘 실행 직후 종료됐습니다. 실제 PoC 크래시 로그의 `UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`으로 원인을 확인했습니다. 기존 CLI 8.4 템플릿에 scene 구성이 없었던 것이 원인으로, iOS 27 SDK 빌드는 UIKit scene 생명주기가 필요합니다. 설치된 Capacitor iOS 8.5.3의 `SceneDelegateProxy`를 사용해 SceneDelegate, Info.plist manifest 및 Xcode Sources 등록을 추가했습니다. 프로그램으로 단일 window/bridge를 생성하며 앱 ID·hostname·scheme·IndexedDB 이름은 바꾸지 않습니다. 패키지 버전과 공통 도메인 엔진도 변경하지 않았습니다.
+
+참고: [Apple UIKit 전환 안내](https://developer.apple.com/documentation/uikit/transitioning-to-the-uikit-scene-based-life-cycle), [Capacitor 8.5 전환 안내](https://capacitorjs.com/docs/updating/8-5).
+
+확인한 범위:
+
+- iOS arm64 네이티브 컴파일 및 Personal Team 서명 빌드 성공.
+- 연결된 실제 iPhone에 같은 앱 ID로 덮어 설치 후 실행 요청 성공. 사용자 직접 확인으로 초기 종료 문제 해소 확인.
+- 사용자 실기기 확인: 연속 +1·−1·실행 취소, 단 완료 초기화 후 코수/단수 동시 복원, 저장 완료 뒤 강제 종료·홈 아이콘 재실행 시 프로젝트·값·이력 유지.
+- 사용자 실기기 확인: 타이머 증가, 백그라운드·강제 종료 후 시간 복원, 종료 시 메인 숫자 초기화와 마지막 확정 시간 보존.
+- 사용자 실기기 확인: 사진 선택·저장 후 강제 종료·재실행 시 사진 유지.
+- 사용자 실기기 확인: iPhone 파일 앱에 ZIP 저장, 변경 후 ZIP 복원 시 원래 기록으로 복귀.
+- 사용자 실기기 확인: 비행기 모드·Wi-Fi 꺼짐 상태에서 홈 아이콘 실행, +1 저장 및 강제 종료·재실행 후 보존. Mac의 기존 Docker/Supabase 서비스는 중지하거나 변경하지 않았습니다.
+- PoC lint·typecheck 및 Vitest 15개 재통과. 실기기 기능 확인은 사용자 수동 테스트이며 자동 UI 테스트 통과로 표시하지 않습니다.
+
+아직 검증 완료로 간주하지 않는 범위: 앱 삭제·재설치 후 복원, 데이터가 쌓인 상태의 버전 업데이트, 기기 재부팅, 저장소 용량 부족·쓰기 중단, 모든 EXIF/이미지 형식 조합, Android 실기기. 개발자 신뢰·키체인 접근 승인은 사용자가 직접 수행했습니다. 공유 프로젝트에는 Personal Team ID를 포함하지 않습니다. 이 Mac의 Team 설정은 로컬 미커밋 변경으로 유지하며, 다른 개발자는 Xcode에서 자신의 Team을 선택해야 합니다. Swift 패키지 버전 재현을 위해 `Package.resolved`는 버전 관리하고, 개인 Xcode 사용자 상태·서명키·빌드 산출물은 제외합니다.
