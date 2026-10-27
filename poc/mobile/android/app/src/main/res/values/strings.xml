@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">StitchMori Storage PoC</string>
+    <string name="title_activity_main">StitchMori Storage PoC</string>
+    <string name="package_name">com.stitchmori.storagepoc</string>
+    <string name="custom_url_scheme">com.stitchmori.storagepoc</string>
+</resources>
